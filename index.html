@@ -158,6 +158,8 @@
   .order-item .order-user { font-size: 0.72rem; color: var(--accent); font-weight: 600; }
   .order-item .order-del  { background: transparent; border: 1px solid var(--danger); color: var(--danger); border-radius: 5px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; white-space: nowrap; }
   .order-item .order-del:hover { background: var(--danger); color: #fff; }
+  .order-item .order-erp { background: transparent; border: 1px solid var(--border); color: var(--text2); border-radius: 5px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; white-space: nowrap; }
+  .order-item .order-erp.on { background: var(--accent2); border-color: var(--accent2); color: #fff; }
   .tab-btn { padding: 7px 20px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); font-family: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
   .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   #viewHome > div > div:hover { transform: translateY(-3px); border-color: var(--accent); }</style>
@@ -2735,6 +2737,7 @@ async function loadSavedOrders() {
             <div class="order-sub">${o.address || ''} ${o.zipcode ? '(' + o.zipcode + ')' : ''} ${o.freight_type ? '· ' + o.freight_type : ''} ${o.memo ? '· ' + o.memo : ''}</div>
             ${isMaster ? `<div class="order-user">👤 ${o.profiles?.name || o.profiles?.email || ''}</div>` : ''}
           </div>
+          <button class="order-erp${o.erp_submitted?' on':''}" onclick="event.stopPropagation();toggleErp('${o.id}', ${!!o.erp_submitted})">${o.erp_submitted?'✅ ERP완료':'ERP 미입력'}</button>
           <button class="order-del" onclick="event.stopPropagation();deleteOrder('${o.id}')">삭제</button>
         </div>
       `).join('')}
@@ -2841,6 +2844,14 @@ async function deleteOrder(id) {
   else loadSavedOrders();
 }
 
+async function toggleErp(id, current) {
+  const { error } = await sb.from('orders').update({ erp_submitted: !current }).eq('id', id);
+  if (error) { showToast('변경 실패: ' + error.message); return; }
+  showToast(!current ? 'ERP 입력 완료로 표시' : 'ERP 미입력으로 변경');
+  if (document.getElementById('viewByAccount').style.display !== 'none') loadByAccount();
+  else loadSavedOrders();
+}
+
 // ── 계정별 저장 목록 (마스터 전용) ──
 async function loadByAccount() {
   const list = document.getElementById('byAccountList');
@@ -2887,6 +2898,7 @@ async function loadByAccount() {
                     <div class="order-name">${o.recipient_name || '(수취인 없음)'} ${o.phone ? '· ' + o.phone : ''}</div>
                     <div class="order-sub">${o.address || ''} ${o.zipcode ? '(' + o.zipcode + ')' : ''} ${o.freight_type ? '· ' + o.freight_type : ''} ${o.memo ? '· ' + o.memo : ''}</div>
                   </div>
+                  <button class="order-erp${o.erp_submitted?' on':''}" onclick="event.stopPropagation();toggleErp('${o.id}', ${!!o.erp_submitted})">${o.erp_submitted?'✅ ERP완료':'ERP 미입력'}</button>
                   <button class="order-del" onclick="event.stopPropagation();deleteOrder('${o.id}')">삭제</button>
                 </div>
               `).join('')}
