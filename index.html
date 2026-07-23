@@ -2759,7 +2759,7 @@ async function openOrderModal(id) {
   window._modalAddr = data.address || '';
   window._modalName = data.recipient_name || '';
   window._modalMemo = data.memo || '';
-  const editable = window._modalIsOwner;
+  const editable = window._modalIsOwner || isMaster;
   mc.innerHTML = `
     <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:14px">
       ${data.recipient_name || '(수취인 없음)'} 
@@ -2792,7 +2792,7 @@ async function openOrderModal(id) {
       <button class="btn btn-copy2" onclick="copyModalCol('qty')">🔢 수량 복사</button>
       ${editable ? `<button class="btn-save" style="padding:8px 16px;font-size:0.82rem" onclick="saveModalQty()">💾 수량 수정 저장</button>` : ''}
     </div>
-    ${editable ? `<div style="font-size:0.75rem;color:var(--text2);margin-bottom:8px">✏️ 본인이 저장한 항목이라 수량을 수정할 수 있어요.</div>` : ''}
+    ${editable ? `<div style="font-size:0.75rem;color:var(--text2);margin-bottom:8px">✏️ ${window._modalIsOwner ? '본인이 저장한 항목이라' : '마스터 계정이라'} 수량을 수정할 수 있어요.</div>` : ''}
     <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
       <thead><tr style="background:var(--surface2);border-bottom:2px solid var(--accent)">
         <th style="padding:8px 12px;text-align:left;font-size:0.72rem;color:var(--text2)">부품</th>
