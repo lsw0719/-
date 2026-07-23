@@ -1,0 +1,2963 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수주 입력 시스템</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg: #f4f6fa;
+    --surface: #ffffff;
+    --surface2: #f0f2f7;
+    --border: #dde1ec;
+    --accent: #2b7fff;
+    --accent2: #00a884;
+    --text: #1a1d2e;
+    --text2: #6b7290;
+    --danger: #e53e4d;
+    --row-odd: #ffffff;
+    --row-even: #f8f9fc;
+    --speed-accent: #f07d00;
+    --plywood-accent: #2e8b57;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Sans KR', sans-serif;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  h1 { font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em; color: var(--accent); margin-bottom: 4px; }
+  .subtitle { font-size: 0.78rem; color: var(--text2); margin-bottom: 24px; }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .card-title { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text2); margin-bottom: 16px; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; align-items: end; }
+
+  .field label { display: block; font-size: 0.72rem; color: var(--text2); margin-bottom: 6px; font-weight: 500; }
+  .field select, .field input {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; color: var(--text); font-family: inherit; font-size: 0.85rem;
+    padding: 9px 12px; outline: none; transition: border-color 0.15s;
+  }
+  .field select:focus, .field input:focus { border-color: var(--accent); }
+  .field select option { background: var(--surface2); }
+  .field.hidden { display: none; }
+
+  .btn { padding: 9px 20px; border-radius: 6px; border: none; cursor: pointer; font-family: inherit; font-size: 0.85rem; font-weight: 600; transition: all 0.15s; white-space: nowrap; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { opacity: 0.85; }
+  .btn-danger { background: transparent; border: 1px solid var(--danger); color: var(--danger); font-size: 0.78rem; padding: 6px 12px; }
+  .btn-danger:hover { background: var(--danger); color: #fff; }
+  .btn-copy { background: var(--surface2); border: 1px solid var(--border); color: var(--accent2); font-size: 0.78rem; padding: 7px 14px; }
+  .btn-copy:hover { border-color: var(--accent2); }
+  .btn-copy2 { background: var(--surface2); border: 1px solid var(--border); color: #ffd166; font-size: 0.78rem; padding: 7px 14px; }
+  .btn-copy2:hover { border-color: #ffd166; }
+
+  .type-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  .type-tab { padding: 7px 18px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); font-family: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .type-tab.active-경량랙   { background: var(--accent);          border-color: var(--accent);          color: #fff; }
+  .type-tab.active-중량랙   { background: #0891b2;                border-color: #0891b2;                color: #fff; }
+  .type-tab.active-스피드랙 { background: var(--speed-accent);    border-color: var(--speed-accent);    color: #0f1117; }
+  .type-tab.active-홈던트   { background: #7c3aed;                border-color: #7c3aed;                color: #fff; }
+  .type-tab.active-합판     { background: var(--plywood-accent);  border-color: var(--plywood-accent);  color: #0f1117; }
+
+  .entry-list { display: flex; flex-direction: column; gap: 8px; }
+  .entry-item { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; display: flex; align-items: center; gap: 12px; font-size: 0.82rem; }
+  .entry-badge { background: var(--accent); color: #fff; border-radius: 4px; padding: 2px 8px; font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
+  .entry-badge.connected  { background: var(--accent2);        color: #0f1117; }
+  .entry-badge.medium     { background: #0891b2;               color: #fff; }
+  .entry-badge.medium-conn{ background: #0e7490;               color: #fff; }
+  .entry-badge.speed      { background: var(--speed-accent);   color: #0f1117; }
+  .entry-badge.speed-conn { background: #e17022;               color: #fff; }
+  .entry-badge.speed-hanger { background: #c084fc;             color: #0f1117; }
+  .entry-badge.homedent     { background: #7c3aed;             color: #fff; }
+  .entry-badge.homedent-conn{ background: #5b21b6;             color: #fff; }
+  .entry-badge.homedent-hang{ background: #a855f7;             color: #fff; }
+  .entry-badge.acc          { background: #64748b;             color: #fff; }
+  .entry-spec   { color: var(--text2); flex: 1; font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+  .entry-qty    { color: var(--text); font-weight: 600; white-space: nowrap; }
+  .entry-delete { margin-left: auto; }
+
+  .result-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  thead tr { background: var(--surface2); border-bottom: 2px solid var(--accent); }
+  thead th { padding: 10px 14px; text-align: left; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text2); }
+  tbody tr:nth-child(odd)  { background: var(--row-odd); }
+  tbody tr:nth-child(even) { background: var(--row-even); }
+  tbody tr:hover           { background: var(--surface2); }
+  tbody td { padding: 9px 14px; border-bottom: 1px solid var(--border); }
+  .td-label { color: var(--text2); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em; white-space: nowrap; }
+  .td-name  { color: var(--text); font-weight: 500; }
+  .td-code  { color: var(--text2); font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; }
+  .td-spec  { color: var(--text2); }
+  .td-qty   { color: var(--accent2); font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+  .empty-state { text-align: center; padding: 40px; color: var(--text2); font-size: 0.82rem; }
+  .toast { position: fixed; bottom: 24px; right: 24px; background: var(--accent2); color: #0f1117; padding: 10px 18px; border-radius: 8px; font-size: 0.82rem; font-weight: 600; opacity: 0; transform: translateY(10px); transition: all 0.25s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .error-msg { color: var(--danger); font-size: 0.75rem; margin-top: 8px; display: none; }
+  .error-msg.show { display: block; }
+
+  /* ── 로그인 화면 ── */
+  #authWrap {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  }
+  .auth-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+    padding: 36px 40px; width: 100%; max-width: 400px;
+  }
+  .auth-card h2 { font-size: 1.2rem; font-weight: 700; color: var(--accent); margin-bottom: 4px; }
+  .auth-card p  { font-size: 0.8rem; color: var(--text2); margin-bottom: 24px; }
+  .auth-tab { display: flex; gap: 0; margin-bottom: 20px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border); }
+  .auth-tab button { flex: 1; padding: 9px; font-family: inherit; font-size: 0.85rem; font-weight: 600; border: none; cursor: pointer; background: var(--surface2); color: var(--text2); transition: all 0.15s; }
+  .auth-tab button.active { background: var(--accent); color: #fff; }
+  .auth-field { margin-bottom: 14px; }
+  .auth-field label { display: block; font-size: 0.72rem; color: var(--text2); margin-bottom: 5px; font-weight: 600; }
+  .auth-field input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: inherit; font-size: 0.85rem; padding: 9px 12px; outline: none; box-sizing: border-box; }
+  .auth-field input:focus { border-color: var(--accent); }
+  .auth-err { font-size: 0.75rem; color: var(--danger); margin-bottom: 10px; min-height: 1em; }
+  .btn-auth { width: 100%; padding: 10px; background: var(--accent); color: #fff; border: none; border-radius: 6px; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; margin-top: 4px; }
+  .btn-auth:hover { opacity: 0.85; }
+
+  /* ── 상단 바 ── */
+  #topBar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  #userInfo { font-size: 0.8rem; color: var(--text2); }
+  #userInfo strong { color: var(--text); }
+  #btnLogout { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text2); font-family: inherit; font-size: 0.78rem; padding: 5px 12px; cursor: pointer; }
+  #btnLogout:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ── 저장 카드 ── */
+  .save-card { background: var(--surface); border: 1px solid var(--accent); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .save-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .save-grid .field label { font-size: 0.72rem; color: var(--text2); display: block; margin-bottom: 5px; font-weight: 600; }
+  .save-grid .field input, .save-grid .field select {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px;
+    color: var(--text); font-family: inherit; font-size: 0.85rem; padding: 9px 12px; outline: none; box-sizing: border-box;
+  }
+  .save-grid .field input:focus, .save-grid .field select:focus { border-color: var(--accent); }
+  .btn-save { background: var(--accent); color: #fff; border: none; border-radius: 6px; padding: 10px 28px; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; }
+  .btn-save:hover { opacity: 0.85; }
+
+  /* ── 저장 목록 ── */
+  #savedList .date-group { margin-bottom: 20px; }
+  #savedList .date-label { font-size: 0.72rem; font-weight: 700; color: var(--text2); letter-spacing: 0.08em; text-transform: uppercase; padding: 6px 0; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+  .order-item { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 16px; margin-bottom: 8px; display: flex; align-items: flex-start; gap: 12px; cursor: pointer; transition: border-color 0.15s; }
+  .order-item:hover { border-color: var(--accent); }
+  .order-item .order-info { flex: 1; }
+  .order-item .order-name { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+  .order-item .order-sub  { font-size: 0.75rem; color: var(--text2); margin-top: 3px; }
+  .order-item .order-user { font-size: 0.72rem; color: var(--accent); font-weight: 600; }
+  .order-item .order-del  { background: transparent; border: 1px solid var(--danger); color: var(--danger); border-radius: 5px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; white-space: nowrap; }
+  .order-item .order-del:hover { background: var(--danger); color: #fff; }
+  .tab-btn { padding: 7px 20px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); font-family: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+  .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  #viewHome > div > div:hover { transform: translateY(-3px); border-color: var(--accent); }</style>
+</head>
+<body>
+
+<!-- ── 로그인/회원가입 ── -->
+<div id="authWrap">
+  <div class="auth-card">
+    <h2>📦 수주 입력 시스템</h2>
+    <p>스피드랙 B2B 영업팀</p>
+    <div class="auth-tab">
+      <button class="active" onclick="setAuthTab('login')">로그인</button>
+      <button onclick="setAuthTab('signup')">회원가입</button>
+    </div>
+    <div id="authLoginForm">
+      <div class="auth-field"><label>이메일</label><input type="email" id="loginEmail" placeholder="이메일"></div>
+      <div class="auth-field"><label>비밀번호</label><input type="password" id="loginPw" placeholder="비밀번호" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="auth-err" id="loginErr"></div>
+      <button class="btn-auth" onclick="doLogin()">로그인</button>
+    </div>
+    <div id="authSignupForm" style="display:none">
+      <div class="auth-field"><label>이름</label><input type="text" id="signupName" placeholder="이름"></div>
+      <div class="auth-field"><label>이메일</label><input type="email" id="signupEmail" placeholder="이메일"></div>
+      <div class="auth-field"><label>비밀번호</label><input type="password" id="signupPw" placeholder="비밀번호 (6자 이상)" onkeydown="if(event.key==='Enter')doSignup()"></div>
+      <div class="auth-err" id="signupErr"></div>
+      <button class="btn-auth" onclick="doSignup()">회원가입</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 메인 앱 ── -->
+<div id="appWrap" style="display:none">
+
+<div id="topBar">
+  <div id="userInfo"></div>
+  <div style="display:flex;gap:8px">
+    <button class="tab-btn" id="tabHome" onclick="showTab('home')">🏠 홈</button>
+    <button class="tab-btn" id="tabInput" onclick="showTab('input')">입력</button>
+    <button class="tab-btn" id="tabQuickEntry" onclick="showTab('quickEntry')">텍스트 등록</button>
+    <button class="tab-btn" id="tabSaved" onclick="showTab('saved')">저장 목록</button>
+    <button class="tab-btn" id="tabByAccount" style="display:none" onclick="showTab('byAccount')">계정별</button>
+    <button class="tab-btn" id="tabMembers" style="display:none" onclick="showTab('members')">회원 목록</button>
+    <button id="btnLogout" onclick="doLogout()">로그아웃</button>
+  </div>
+</div>
+
+<!-- 홈 화면 -->
+<div id="viewHome">
+  <h1>📦 수주 입력 시스템</h1>
+  <p class="subtitle">원하는 메뉴를 선택하세요</p>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:24px">
+    <div onclick="showTab('input')" style="cursor:pointer;flex:1;min-width:200px;padding:28px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center;transition:transform .15s">
+      <div style="font-size:2.2rem;margin-bottom:8px">✏️</div>
+      <div style="font-weight:700;font-size:1.05rem">입력</div>
+      <div style="color:var(--text2);font-size:0.8rem;margin-top:4px">새 수주 등록</div>
+    </div>
+    <div onclick="showTab('quickEntry')" style="cursor:pointer;flex:1;min-width:200px;padding:28px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center;transition:transform .15s">
+      <div style="font-size:2.2rem;margin-bottom:8px">📋</div>
+      <div style="font-weight:700;font-size:1.05rem">텍스트 등록</div>
+      <div style="color:var(--text2);font-size:0.8rem;margin-top:4px">붙여넣기로 자동 등록</div>
+    </div>
+    <div onclick="showTab('saved')" style="cursor:pointer;flex:1;min-width:200px;padding:28px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center;transition:transform .15s">
+      <div style="font-size:2.2rem;margin-bottom:8px">📋</div>
+      <div style="font-weight:700;font-size:1.05rem">저장 목록</div>
+      <div style="color:var(--text2);font-size:0.8rem;margin-top:4px">저장한 수주 조회</div>
+    </div>
+  </div>
+  <div id="homeMasterRow" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px">
+    <div id="homeByAccountCard" onclick="showTab('byAccount')" style="display:none;cursor:pointer;flex:1;min-width:200px;padding:28px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center;transition:transform .15s">
+      <div style="font-size:2.2rem;margin-bottom:8px">👥</div>
+      <div style="font-weight:700;font-size:1.05rem">계정별</div>
+      <div style="color:var(--text2);font-size:0.8rem;margin-top:4px">계정별 저장 목록 (마스터)</div>
+    </div>
+    <div id="homeMembersCard" onclick="showTab('members')" style="display:none;cursor:pointer;flex:1;min-width:200px;padding:28px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center;transition:transform .15s">
+      <div style="font-size:2.2rem;margin-bottom:8px">🧑‍🤝‍🧑</div>
+      <div style="font-weight:700;font-size:1.05rem">회원 목록</div>
+      <div style="color:var(--text2);font-size:0.8rem;margin-top:4px">가입 회원 조회 (마스터)</div>
+    </div>
+  </div>
+</div>
+
+<!-- 입력 탭 -->
+<div id="viewInput" style="display:none">
+
+<h1>📦 수주 입력 시스템</h1>
+<p class="subtitle">랙 세트 구성 자동 계산</p>
+
+<!-- 단품 추가 -->
+<div class="card">
+  <div class="card-title">단품 추가</div>
+  <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+    <div class="field" style="flex:1;min-width:160px">
+      <label>부품 종류</label>
+      <select id="single-cat" onchange="onSingleCatChange()">
+        <option value="">-- 종류 선택 --</option>
+      </select>
+    </div>
+    <div class="field" style="flex:3;min-width:260px">
+      <label>품목 선택</label>
+      <select id="single-select" onchange="onSingleSelect()">
+        <option value="">-- 종류를 먼저 선택하세요 --</option>
+      </select>
+    </div>
+    <div class="field" style="width:90px;flex:0 0 90px">
+      <label>수량</label>
+      <input type="number" id="single-qty" value="1" min="1" max="9999">
+    </div>
+    <div class="field" style="flex:0 0 auto">
+      <label>&nbsp;</label>
+      <button class="btn btn-primary" style="background:#475569" onclick="addSinglePart()">+ 추가</button>
+    </div>
+  </div>
+  <div id="single-preview" style="margin-top:8px;font-size:0.75rem;font-family:'JetBrains Mono',monospace;min-height:1.2em;color:var(--text2)"></div>
+</div>
+
+<div class="card">
+  <div class="card-title">세트 추가</div>
+
+  <div class="type-tabs">
+    <button class="type-tab active-경량랙" id="tab-경량랙"  onclick="switchType('경량랙')">경량랙</button>
+    <button class="type-tab"              id="tab-중량랙"   onclick="switchType('중량랙')">중량랙</button>
+    <button class="type-tab"              id="tab-스피드랙" onclick="switchType('스피드랙')">스피드랙</button>
+    <button class="type-tab"              id="tab-홈던트"   onclick="switchType('홈던트')">홈던트</button>
+  </div>
+
+  <!-- 경량랙 -->
+  <div id="form-경량랙">
+    <div class="form-grid">
+      <div class="field"><label>구분</label>
+        <select id="l-division"><option value="독립형">독립형</option><option value="연결형">연결형</option></select>
+      </div>
+      <div class="field"><label>기둥 높이 (mm)</label>
+        <select id="l-height">
+          <option value="900">900</option><option value="1200">1200</option><option value="1500">1500</option>
+          <option value="1800" selected>1800</option><option value="2100">2100</option>
+          <option value="2400">2400</option><option value="2700">2700</option>
+        </select>
+      </div>
+      <div class="field"><label>가로 / 전면빔 (mm)</label>
+        <select id="l-width"><option value="900">900</option><option value="1200" selected>1200</option><option value="1500">1500</option></select>
+      </div>
+      <div class="field"><label>세로 / 공용받침 (mm)</label>
+        <select id="l-depth"><option value="300">300</option><option value="450" selected>450</option><option value="600">600</option></select>
+      </div>
+      <div class="field"><label>단수</label><input type="number" id="l-shelves" value="4" min="1" max="20"></div>
+      <div class="field"><label>대수</label><input type="number" id="l-qty" value="1" min="1"></div>
+      <div class="field"><label>&nbsp;</label><button class="btn btn-primary" onclick="addLightRack()">+ 추가</button></div>
+    </div>
+  </div>
+
+  <!-- 중량랙 -->
+  <div id="form-중량랙" style="display:none">
+    <div class="form-grid">
+      <div class="field"><label>구분</label>
+        <select id="m-division">
+          <option value="독립형">독립형</option>
+          <option value="연결형">연결형</option>
+        </select>
+      </div>
+      <div class="field"><label>기둥 높이 (mm)</label>
+        <select id="m-height">
+          <option value="1500">1500</option>
+          <option value="1800" selected>1800</option>
+          <option value="2100">2100</option>
+          <option value="2400">2400</option>
+        </select>
+      </div>
+      <div class="field"><label>전면빔 / 가로 (mm)</label>
+        <select id="m-width">
+          <option value="900">900</option>
+          <option value="1200" selected>1200</option>
+          <option value="1500">1500</option>
+          <option value="1800">1800</option>
+        </select>
+      </div>
+      <div class="field"><label>세로 (mm)</label>
+        <select id="m-depth">
+          <option value="450" selected>450</option>
+          <option value="600">600</option>
+          <option value="900">900</option>
+        </select>
+      </div>
+      <div class="field"><label>단수</label><input type="number" id="m-shelves" value="4" min="1" max="20"></div>
+      <div class="field"><label>대수</label><input type="number" id="m-qty" value="1" min="1"></div>
+      <div class="field"><label>&nbsp;</label>
+        <button class="btn btn-primary" style="background:#0891b2;color:#fff" onclick="addMediumRack()">+ 추가</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 스피드랙 -->
+  <div id="form-스피드랙" style="display:none">
+    <div class="form-grid">
+      <div class="field"><label>구분</label>
+        <select id="s-division" onchange="onSpeedFormChange()">
+          <option value="독립형">독립형</option>
+          <option value="연결형">연결형</option>
+          <option value="행거형">행거형</option>
+        </select>
+      </div>
+      <div class="field"><label>색상</label>
+        <select id="s-color"><option value="W">화이트</option><option value="B">블랙</option></select>
+      </div>
+      <div class="field"><label>기둥 높이 (mm)</label>
+        <select id="s-height">
+          <option value="330">330</option><option value="420">420</option><option value="600">600</option>
+          <option value="750">750</option><option value="900">900</option><option value="1200">1200</option>
+          <option value="1500">1500</option><option value="1800" selected>1800</option>
+          <option value="2100">2100</option><option value="2400">2400</option>
+        </select>
+      </div>
+      <div class="field"><label>받침 가로규격 (mm)</label>
+        <select id="s-width" onchange="onSpeedFormChange()"></select>
+      </div>
+      <!-- 독립형/행거형: 받침 세로 -->
+      <div class="field hidden" id="field-s-depth"><label>받침 세로규격 (mm)</label>
+        <select id="s-depth" onchange="updateSpeedPlywoodPreview()"></select>
+      </div>
+      <!-- 연결형: 연결받침 세로 -->
+      <div class="field hidden" id="field-s-conn-depth"><label>연결받침 세로규격 (mm)</label>
+        <select id="s-conn-depth" onchange="updateSpeedPlywoodPreview()"></select>
+      </div>
+      <div class="field"><label>단수</label>
+        <input type="number" id="s-shelves" value="4" min="1" max="20" oninput="onShelvesChange()">
+      </div>
+      <!-- 행거형: 행거단수 -->
+      <div class="field hidden" id="field-s-hanger-shelves"><label>행거 단수</label>
+        <input type="number" id="s-hanger-shelves" value="1" min="1" max="3">
+      </div>
+      <div class="field"><label>합판</label>
+        <select id="s-plywood" onchange="onSpeedFormChange()">
+          <option value="9" selected>9T</option>
+          <option value="12">12T</option>
+        </select>
+      </div>
+      <div class="field"><label>대수</label><input type="number" id="s-qty" value="1" min="1"></div>
+      <div class="field"><label>&nbsp;</label>
+        <button class="btn btn-primary" style="background:var(--speed-accent);color:#0f1117" onclick="addSpeedRack()">+ 추가</button>
+      </div>
+    </div>
+    <div id="s-plywood-preview" style="margin-top:10px;font-size:0.78rem;font-family:'JetBrains Mono',monospace;min-height:1.2em;color:var(--text2)"></div>
+
+    <!-- 운임 선택 -->
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="font-size:0.72rem;font-weight:700;color:var(--text2);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px">운임</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem">
+          <input type="radio" name="s-freight" value="택배" checked onchange="onFreightChange()"> 택배
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem">
+          <input type="radio" name="s-freight" value="파렛" onchange="onFreightChange()"> 파렛
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem">
+          <input type="radio" name="s-freight" value="용차" onchange="onFreightChange()"> 용차
+        </label>
+      </div>
+      <!-- 용차: 주소 검색 + 선택 -->
+      <div id="field-freight-addr" style="display:none">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="freight-search" placeholder="지역 검색..." oninput="onFreightSearch()"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:8px 12px;outline:none;width:180px">
+          <select id="freight-addr" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:8px 12px;outline:none;flex:1;min-width:200px" onchange="onFreightAddrSelect()">
+            <option value="">-- 지역 선택 --</option>
+          </select>
+          <span id="freight-price-preview" style="font-size:0.82rem;font-family:'JetBrains Mono',monospace;color:var(--accent2);white-space:nowrap"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 홈던트 -->
+  <div id="form-홈던트" style="display:none">
+    <div class="form-grid">
+      <div class="field"><label>구분</label>
+        <select id="h-division" onchange="onHomeDentFormChange()">
+          <option value="독립형">독립형</option>
+          <option value="행거형">행거형</option>
+        </select>
+      </div>
+      <div class="field"><label>색상</label>
+        <select id="h-color"><option value="W">화이트</option><option value="B">블랙</option></select>
+      </div>
+      <div class="field"><label>기둥 높이 (mm)</label>
+        <select id="h-height">
+          <option value="600">600</option>
+          <option value="750">750</option>
+          <option value="900">900</option>
+          <option value="1050">1050</option>
+          <option value="1200">1200 (600+600)</option>
+          <option value="1350">1350 (600+750)</option>
+          <option value="1500">1500 (750+750)</option>
+          <option value="1650">1650 (750+900)</option>
+          <option value="1800" selected>1800 (900+900)</option>
+          <option value="1950">1950 (900+1050)</option>
+          <option value="2100">2100 (1050+1050)</option>
+        </select>
+      </div>
+      <div class="field"><label>받침 가로규격 (mm)</label>
+        <select id="h-width" onchange="onHomeDentFormChange()">
+          <option value="300">300</option><option value="400">400</option><option value="500">500</option>
+          <option value="600">600</option><option value="700">700</option><option value="800">800</option>
+          <option value="900">900</option><option value="1000">1000</option><option value="1100">1100</option>
+          <option value="1200" selected>1200</option>
+        </select>
+      </div>
+      <div class="field hidden" id="field-h-depth"><label>받침 세로규격 (mm)</label>
+        <select id="h-depth"></select>
+      </div>
+      <div class="field"><label>단수</label>
+        <input type="number" id="h-shelves" value="4" min="1" max="20" oninput="onHomeDentShelvesChange()">
+      </div>
+      <div class="field hidden" id="field-h-hanger-shelves"><label>행거 단수</label>
+        <input type="number" id="h-hanger-shelves" value="1" min="1" max="3">
+      </div>
+      <div class="field"><label>합판</label>
+        <select id="h-plywood" onchange="onHomeDentFormChange()">
+          <option value="9" selected>9T</option>
+          <option value="12">12T</option>
+        </select>
+      </div>
+      <div class="field"><label>대수</label><input type="number" id="h-qty" value="1" min="1"></div>
+      <div class="field"><label>&nbsp;</label>
+        <button class="btn btn-primary" style="background:#7c3aed;color:#fff" onclick="addHomeDent()">+ 추가</button>
+      </div>
+    </div>
+    <div id="h-plywood-preview" style="margin-top:10px;font-size:0.78rem;font-family:'JetBrains Mono',monospace;min-height:1.2em;color:var(--text2)"></div>
+
+    <!-- 운임 선택 -->
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="font-size:0.72rem;font-weight:700;color:var(--text2);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px">운임</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem">
+          <input type="radio" name="h-freight" value="택배" checked onchange="onHomeDentFreightChange()"> 택배
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem">
+          <input type="radio" name="h-freight" value="파렛" onchange="onHomeDentFreightChange()"> 파렛
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem">
+          <input type="radio" name="h-freight" value="용차" onchange="onHomeDentFreightChange()"> 용차
+        </label>
+      </div>
+      <div id="field-h-freight-addr" style="display:none">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="h-freight-search" placeholder="지역 검색..." oninput="onHomeDentFreightSearch()"
+            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:8px 12px;outline:none;width:180px">
+          <select id="h-freight-addr" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:8px 12px;outline:none;flex:1;min-width:200px" onchange="onHomeDentFreightAddrSelect()">
+            <option value="">-- 지역 선택 --</option>
+          </select>
+          <span id="h-freight-price-preview" style="font-size:0.82rem;font-family:'JetBrains Mono',monospace;color:var(--accent2);white-space:nowrap"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="error-msg" id="errorMsg">⚠ 해당 규격의 부품을 찾을 수 없습니다. 규격을 확인해주세요.</div>
+</div>
+
+<!-- 부속품 추가 -->
+<div class="card">
+  <div class="card-title">부속품 추가</div>
+  <div style="display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap">
+    <div class="field" style="min-width:240px;flex:2">
+      <label>부속품 선택</label>
+      <select id="acc-select" onchange="onAccSelect()">
+        <option value="">-- 선택 --</option>
+        <option value="hammer">신형우레탄망치(중)</option>
+        <option value="hook-w">리버서블C후크 (화이트, 1세트=4개)</option>
+        <option value="hook-b">리버서블C후크 (블랙, 1세트=4개)</option>
+        <option value="clip-speed-w">기둥고정클립 스피드랙 (화이트)</option>
+        <option value="clip-speed-b">기둥고정클립 스피드랙 (블랙)</option>
+        <option value="clip-home-w">기둥고정클립 홈던트 (화이트)</option>
+        <option value="clip-home-b">기둥고정클립 홈던트 (블랙)</option>
+        <option value="l-plate-w">L형플레이트세트 (화이트)</option>
+        <option value="l-plate-b">L형플레이트세트 (블랙)</option>
+        <option value="curtain-side">공용/부품/사이드커튼세트/N</option>
+        <option value="curtain-speed-front">스피드랙/부품/정면커튼세트/N</option>
+        <option value="curtain-speed-bar">스피드랙/부품/커튼봉세트/N</option>
+        <option value="mesh-speed-b">스피드랙/부품/메쉬보드세트/B</option>
+        <option value="mesh-speed-w">스피드랙/부품/메쉬보드세트/W</option>
+        <option value="curtain-home-front">H하우스/부품/정면커튼세트/N</option>
+        <option value="curtain-home-bar">H하우스/부품/커튼봉세트/N</option>
+        <option value="mesh-home-b">H하우스/부품/메쉬보드세트/B</option>
+        <option value="mesh-home-w">H하우스/부품/메쉬보드세트/W</option>
+        <option value="level-home-6">H하우스/부품/소형조절좌세트/N (조절좌4+브라켓4)</option>
+        <option value="level-speed-6">스피드랙/부품/소형조절좌세트/N (조절좌4+브라켓4+볼트10+너트10)</option>
+        <option value="level-speed-12">스피드랙/부품/조절좌/N (12mm 단품)</option>
+        <option value="level-speed-bracket">스피드랙/부품/조절좌브라켓세트/N (브라켓1+볼트2+너트2)</option>
+      </select>
+    </div>
+    <!-- 규격 선택 (커튼류 선택 시 표시) -->
+    <div class="field hidden" id="field-acc-spec1" style="min-width:280px;flex:1">
+      <label>규격</label>
+      <select id="acc-spec1" onchange="onAccSpecChange()"></select>
+    </div>
+    <div class="field" style="width:100px;flex:0 0 100px">
+      <label>수량</label>
+      <input type="number" id="acc-qty" value="1" min="1" max="999">
+    </div>
+    <div class="field" style="flex:0 0 auto">
+      <label>&nbsp;</label>
+      <button class="btn btn-primary" style="background:#64748b" onclick="addAccessory()">+ 추가</button>
+    </div>
+  </div>
+  <div id="acc-preview" style="margin-top:8px;font-size:0.75rem;color:var(--text2);font-family:'JetBrains Mono',monospace;min-height:1.2em"></div>
+</div>
+
+<div class="card" id="entryCard" style="display:none">
+  <div class="card-title">입력 항목</div>
+  <div class="entry-list" id="entryList"></div>
+</div>
+
+<div class="card" id="resultCard" style="display:none">
+  <div class="result-header">
+    <div class="card-title" style="margin:0">부품 목록</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-copy"  onclick="copyCol('code')">📋 품번 복사</button>
+      <button class="btn btn-copy2" onclick="copyCol('qty')">🔢 수량 복사</button>
+      <button class="btn btn-copy"  onclick="copyTable()" style="color:var(--text2)">전체 복사</button>
+      <button class="btn btn-danger" onclick="clearAll()">전체 삭제</button>
+    </div>
+  </div>
+  <!-- 운임 요약 -->
+  <div id="freightSummary" style="display:none;margin-bottom:14px;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:0.82rem;display:flex;gap:20px;flex-wrap:wrap"></div>
+  <table>
+    <thead><tr><th>부품</th><th>품명</th><th>품번</th><th>규격</th><th>수량</th></tr></thead>
+    <tbody id="resultBody"></tbody>
+  </table>
+</div>
+
+<div class="empty-state" id="emptyState">종류, 규격, 수량을 입력하고 추가 버튼을 눌러주세요.</div>
+
+<!-- 수취인 정보 + 저장 -->
+<div class="save-card" id="saveCard" style="display:none">
+  <div class="card-title" style="margin-bottom:14px">📋 수취인 정보 & 저장</div>
+  <div class="save-grid">
+    <div class="field"><label>수취인 이름</label><input type="text" id="recipientName" placeholder="이름"></div>
+    <div class="field"><label>핸드폰번호</label><input type="text" id="recipientPhone" placeholder="010-0000-0000"></div>
+    <div class="field"><label>우편번호</label><input type="text" id="recipientZip" placeholder="우편번호"></div>
+    <div class="field" style="grid-column: span 2"><label>주소</label><input type="text" id="recipientAddr" placeholder="주소를 입력하세요"></div>
+    <div class="field"><label>운임 구분</label>
+      <select id="recipientFreight">
+        <option value="택배">택배</option>
+        <option value="파렛">파렛</option>
+        <option value="용차">용차</option>
+      </select>
+    </div>
+    <div class="field"><label>메모</label><input type="text" id="orderMemo" placeholder="메모 (선택)"></div>
+  </div>
+  <button class="btn-save" onclick="saveOrder()">💾 저장</button>
+</div>
+
+</div><!-- /viewInput -->
+
+<!-- 텍스트 등록 탭 -->
+<div id="viewQuickEntry" style="display:none">
+  <h1>📋 텍스트로 등록</h1>
+  <p class="subtitle">주문 내용을 그대로 붙여넣으면 자동으로 인식해서 저장합니다. 1건이든 여러 건(<code>///</code>로 구분)이든 그냥 넣으면 됩니다.</p>
+  <div class="card">
+    <textarea id="quickEntryText" rows="12" placeholder="경량랙 독립형 1500*600*2100높이 3단&#10;소형우레탄망치 1개&#10;수취인정보&#10;홍길동&#10;010-1234-5678&#10;(12345)&#10;서울특별시 강남구 테헤란로 123 (역삼동) 456호&#10;&#10;(여러 건일 땐 ///로 구분해서 이어 붙이면 됩니다)"
+      style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:10px 12px;outline:none;resize:vertical"></textarea>
+    <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+      <button class="btn btn-primary" onclick="submitQuickEntry()">🚀 등록하기</button>
+    </div>
+    <div id="quickEntryResult" style="font-size:0.78rem;color:var(--text2);margin-top:10px;line-height:1.6"></div>
+  </div>
+</div>
+
+<!-- 저장 목록 탭 -->
+<div id="viewSaved" style="display:none">
+  <h1>📋 저장 목록</h1>
+  <p class="subtitle" id="savedSubtitle"></p>
+  <div id="savedList" style="margin-top:16px"></div>
+</div>
+
+<!-- 계정별 탭 (마스터 전용) -->
+<div id="viewByAccount" style="display:none">
+  <h1>👥 계정별 저장 목록</h1>
+  <p class="subtitle" id="byAccountSubtitle"></p>
+  <div id="byAccountList" style="margin-top:16px"></div>
+</div>
+
+<!-- 회원 목록 탭 (마스터 전용) -->
+<div id="viewMembers" style="display:none">
+  <h1>🧑‍🤝‍🧑 회원 목록</h1>
+  <p class="subtitle" id="membersSubtitle"></p>
+  <div id="membersList" style="margin-top:16px"></div>
+</div>
+
+</div><!-- /appWrap -->
+
+<!-- 주문 상세 모달 -->
+<div id="orderModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:9999;overflow-y:auto">
+  <div style="background:var(--surface);border-radius:12px;max-width:860px;margin:40px auto;padding:28px;position:relative">
+    <button onclick="closeModal()" style="position:absolute;top:16px;right:16px;background:transparent;border:none;font-size:1.2rem;cursor:pointer;color:var(--text2)">✕</button>
+    <div id="modalContent"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════
+// 데이터베이스
+// ════════════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════════════
+// 중량랙 데이터베이스
+// ════════════════════════════════════════════════════════
+const MEDIUM_PARTS = {
+  기둥: {
+    1500:{code:'2E000001500',name:'중량랙/기둥/W',spec:'1500'},
+    1800:{code:'2E000001800',name:'중량랙/기둥/W',spec:'1800'},
+    2100:{code:'2E000002100',name:'중량랙/기둥/W',spec:'2100'},
+    2400:{code:'2E000002400',name:'중량랙/기둥/W',spec:'2400'},
+  },
+  상부받침: {
+    450:{code:'2E9W0000450',name:'중량랙/상부받침/W',spec:'450'},
+    600:{code:'2E9W0000600',name:'중량랙/상부받침/W',spec:'600'},
+    900:{code:'2E9W0000900',name:'중량랙/상부받침/W',spec:'900'},
+  },
+  선반받침: {
+    450:{code:'3E9W0000450',name:'중량랙/선반받침/W',spec:'450'},
+    600:{code:'3E9W0000600',name:'중량랙/선반받침/W',spec:'600'},
+    900:{code:'3E9W0000900',name:'중량랙/선반받침/W',spec:'900'},
+  },
+  전면빔: {
+    900: {code:'3D9W0000090',name:'중량랙/전면빔/W',spec:'900'},
+    1200:{code:'3D9W0000120',name:'중량랙/전면빔/W',spec:'1200'},
+    1500:{code:'3D9W0000150',name:'중량랙/전면빔/W',spec:'1500'},
+    1800:{code:'3D9W0000180',name:'중량랙/전면빔/W',spec:'1800'},
+  },
+  선반: {
+    '900*450': {code:'4D9W0900450',name:'중량랙/선반/W',spec:'900*450'},
+    '900*600': {code:'3D9W0900600',name:'중량랙/선반/W',spec:'900*600'},
+    '900*900': {code:'3D9W0900900',name:'중량랙/선반/W',spec:'900*900'},
+    '1200*450':{code:'3D9W0120450',name:'중량랙/선반/W',spec:'1200*450'},
+    '1200*600':{code:'3D9W0120600',name:'중량랙/선반/W',spec:'1200*600'},
+    '1200*900':{code:'3D9W0120900',name:'중량랙/선반/W',spec:'1200*900'},
+    '1500*450':{code:'3D9W0150450',name:'중량랙/선반/W',spec:'1500*450'},
+    '1500*600':{code:'3D9W0150600',name:'중량랙/선반/W',spec:'1500*600'},
+    '1500*900':{code:'3D9W0150900',name:'중량랙/선반/W',spec:'1500*900'},
+    '1800*450':{code:'3D9W0180450',name:'중량랙/선반/W',spec:'1800*450'},
+    '1800*600':{code:'3D9W0180600',name:'중량랙/선반/W',spec:'1800*600'},
+    '1800*900':{code:'3D9W0180900',name:'중량랙/선반/W',spec:'1800*900'},
+  },
+  안전좌:{code:'4A09W00001', name:'안전좌/중량랙/W', spec:'60*55'},
+  안전핀:{code:'2D9W000001', name:'경량랙/부속/안전핀(경중량랙공용)/W', spec:'4파이'},
+};
+
+const LIGHT_PARTS = {
+  기둥: {
+    900:{code:'2D00WS0090',name:'경량랙/규격/기둥/W',spec:'900'},
+    1200:{code:'2D00WS0120',name:'경량랙/규격/기둥/W',spec:'1200'},
+    1500:{code:'2D00WS0150',name:'경량랙/규격/기둥/W',spec:'1500'},
+    1800:{code:'2D00WS0180',name:'경량랙/규격/기둥/W',spec:'1800'},
+    2100:{code:'2D00WS0210',name:'경량랙/규격/기둥/W',spec:'2100'},
+    2400:{code:'2D00WS0240',name:'경량랙/규격/기둥/W',spec:'2400'},
+    2700:{code:'2D000000270',name:'경량랙/규격/기둥/W',spec:'2700'},
+  },
+  전면빔: {
+    900:{code:'2D11WS0090',name:'경량랙/규격/전면빔/W',spec:'900'},
+    1200:{code:'2D11WS0120',name:'경량랙/규격/전면빔/W',spec:'1200'},
+    1500:{code:'2D11WS0150',name:'경량랙/규격/전면빔/W',spec:'1500'},
+  },
+  공용받침: {
+    300:{code:'2D11W0000030',name:'경량랙/규격/공용받침/W',spec:'300'},
+    450:{code:'2D11W0000045',name:'경량랙/규격/공용받침/W',spec:'450'},
+    600:{code:'2D11W0000060',name:'경량랙/규격/공용받침/W',spec:'600'},
+  },
+  선반: {
+    '900*300':{code:'2D9W1900300',name:'경량랙/규격/선반/W',spec:'900*300'},
+    '900*450':{code:'2D9W1900450',name:'경량랙/규격/선반/W',spec:'900*450'},
+    '900*600':{code:'2D9W0900600',name:'경량랙/규격/선반/W',spec:'900*600'},
+    '1200*300':{code:'2D9W1200030',name:'경량랙/규격/선반/W',spec:'1200*300'},
+    '1200*450':{code:'2D9W1200045',name:'경량랙/규격/선반/W',spec:'1200*450'},
+    '1200*600':{code:'2D9W1200600',name:'경량랙/규격/선반/W',spec:'1200*600'},
+    '1500*300':{code:'2D9W1500300',name:'경량랙/규격/선반/W',spec:'1500*300'},
+    '1500*450':{code:'2D9W1500450',name:'경량랙/규격/선반/W',spec:'1500*450'},
+    '1500*600':{code:'2D9W1500600',name:'경량랙/규격/선반/W',spec:'1500*600'},
+  },
+  안전좌:{code:'2A09W00001',name:'경량랙/부속/안전좌/W',spec:'50*50'},
+  안전핀:{code:'2D9W000001',name:'경량랙/부속/안전핀(경중량랙공용)/W',spec:'4파이'},
+};
+
+// 스피드랙 — /160/받침 전 규격 통일 (이번 파일 기준)
+const SPEED_기둥 = {
+  W:{330:'3S21W000033',420:'3S21W000042',600:'3S21W000060',750:'3S21W000075',
+     900:'3S21W000090',1200:'3S21W000120',1500:'3S21W000150',1800:'3S21W000180',
+     2100:'3S21W000210',2400:'3S21W000240'},
+  B:{330:'3S21B000033',420:'3S21B000042',600:'3S21B000060',750:'3S21B000075',
+     900:'3S21B000090',1200:'3S21B000120',1500:'3S21B000150',1800:'3S21B000180',
+     2100:'3S21B000210',2400:'3S21B000240'},
+};
+const SPEED_받침 = {
+  W:{300:'3S22W000030',400:'3S22W000040',500:'3S22W000050',600:'3S22W000060',
+     700:'3S22W000070',800:'3S22W000080',900:'3S22W000090',1000:'3S22W000100',
+     1100:'3S22W000110',1200:'3S22W000120',1500:'3S22W000150'},
+  B:{300:'3S22B000030',400:'3S22B000040',500:'3S22B000050',600:'3S22B000060',
+     700:'3S22B000070',800:'3S22B000080',900:'3S22B000090',1000:'3S22B000100',
+     1100:'3S22B000110',1200:'3S22B000120',1500:'3S22B000150'},
+};
+const SPEED_연결받침 = {
+  W:{300:'3S23W000030',400:'3S23W000040',500:'3S23W000050',600:'3S23W000060'},
+  B:{300:'3S23B000030',400:'3S23B000040',500:'3S23B000050',600:'3S23B000060'},
+};
+
+// 행거형 가능 가로 규격 (행거봉 있는 것만)
+// 행거형 가능 가로 규격 = 행거봉 규격과 받침 규격의 교집합
+const HANGER_WIDTHS = [400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1500];
+
+// 행거받침: 400은 좌/우 분리, 500/600은 단일 (그 외 규격은 행거받침 없음 → 행거봉만)
+const SPEED_행거받침 = {
+  W: {
+    400: { left:'4S23W200040', right:'4S23W100040' },
+    500: { single:'4S23W100050' },
+    600: { single:'4S23W200060' },
+  },
+  B: {
+    400: { left:'4S23B200040', right:'4S23B100040' },
+    500: { single:'4S23B100050' },
+    600: { single:'4S23B200060' },
+  },
+};
+
+// 행거봉(공용/부속/행거봉/N): 전 규격
+const SPEED_행거봉 = {
+  400:  { code:'5S56S000040', name:'공용/부속/행거봉/N', spec:'400(397mm)' },
+  500:  { code:'5S56S000050', name:'공용/부속/행거봉/N', spec:'500(497mm)' },
+  600:  { code:'5S56S000060', name:'공용/부속/행거봉/N', spec:'600(597mm)' },
+  700:  { code:'5S56S000070', name:'공용/부속/행거봉/N', spec:'700(697mm)' },
+  800:  { code:'5S56S000080', name:'공용/부속/행거봉/N', spec:'800(797mm)' },
+  900:  { code:'5S56S000090', name:'공용/부속/행거봉/N', spec:'900(897mm)' },
+  1000: { code:'5S56S000100', name:'공용/부속/행거봉/N', spec:'1000(995+3mm)' },
+  1100: { code:'5S56S000110', name:'공용/부속/행거봉/N', spec:'1100(1095+3mm)' },
+  1200: { code:'5S56S000120', name:'공용/부속/행거봉/N', spec:'1200(1195+3mm)' },
+  1500: { code:'5S56S000150', name:'공용/부속/행거봉/N', spec:'1500(1495+3mm)' },
+};
+
+// 합판
+const PLYWOOD = {
+  9:{
+    '300*300':'3C24a003030','400*300':'3C24A004030','400*400':'3C24A004040',
+    '500*300':'3C24a005030','500*400':'3C24A005040','500*500':'3C24A005050',
+    '600*300':'3C24A006030','600*400':'3C24A006040','600*500':'3C24A006050','600*600':'3C24A006060',
+    '700*300':'3C24A007030','700*400':'3C24A007040','700*500':'3C24A007050','700*600':'3C24A007060','700*700':'3C24A007070',
+    '800*300':'3C24A008030','800*400':'3C24A008040','800*500':'3C24A008050','800*600':'3C24A008060','800*700':'3C24A008070','800*800':'3C24A008080',
+    '900*300':'3C24A009030','900*400':'3C24A009040','900*500':'3C24A009050','900*600':'3C24A009060','900*700':'3C24A009070','900*800':'3C24A009080','900*900':'3C24A009090',
+    '1000*300':'3C24A010030','1000*400':'3C24A010040','1000*500':'3C24A010050','1000*600':'3C24A010060','1000*700':'3C24A010070','1000*800':'3C24A010080','1000*900':'3C24A010090',
+    '1100*300':'3C24A011030','1100*400':'3C24A011040','1100*500':'3C24A011050','1100*600':'3C24A011060','1100*700':'3C24A011070','1100*800':'3C24A011080','1100*900':'3C24A011090',
+    '1200*300':'3C24A012030','1200*400':'3C24A012040','1200*450':'3C24A012045','1200*500':'3C24A012050','1200*600':'3C24A012060','1200*700':'3C24A012070','1200*800':'3C24A012080','1200*900':'3C24A012090',
+    '1500*300':'3C24A015030','1500*400':'3C24A015040','1500*500':'3C24A015050','1500*600':'3C24A015060','1500*700':'3C24A015070','1500*800':'3C24A015080','1500*900':'3C24A015090',
+  },
+  12:{
+    '300*300':'3C34A003030','400*300':'3C34A004030','400*400':'3C34A004040',
+    '500*300':'3C34A005030','500*400':'3C34A005040','500*500':'3C34A005050',
+    '600*300':'3C34A006030','600*400':'3C34A006040','600*500':'3C34A006050','600*600':'3C34A006060',
+    '700*300':'3C34A007030','700*400':'3C34A007040','700*500':'3C34A007050','700*600':'3C34A007060','700*700':'3C34A007070',
+    '800*300':'3C34A008030','800*400':'3C34A008040','800*500':'3C34A008050','800*600':'3C34A008060','800*700':'3C34A008070','800*800':'3C34A008080',
+    '900*300':'3C34A009030','900*400':'3C34A009040','900*500':'3C34A009050','900*600':'3C340a09060','900*700':'3C34A009070','900*800':'3C34A009080','900*900':'3C34A009090',
+    '1000*300':'3C34A010030','1000*400':'3C34A010040','1000*500':'3C34A0100501','1000*600':'3C340a10060','1000*700':'3C34A010070','1000*800':'3C34A010080','1000*900':'3C34A010090',
+    '1100*300':'3C34A011030','1100*400':'3C34A011040','1100*500':'3C34A011050','1100*600':'3C34A011060','1100*700':'3C34A011070','1100*800':'3C34A011080','1100*900':'3C34A011090',
+    '1200*300':'3C34A012030','1200*400':'3C34A012040','1200*500':'3C34A012050','1200*600':'3C340a12060','1200*700':'3C34A012070','1200*800':'3C34A012080','1200*900':'3C34A012090',
+    '1500*300':'3C34A015030','1500*400':'3C34A015040','1500*500':'3C34A015050','1500*600':'3C34A015060','1500*700':'3C34A015070','1500*800':'3C34A015080','1500*900':'3C34A015090',
+  },
+};
+
+// ════════════════════════════════════════════════════════
+// 홈던트 데이터베이스
+// ════════════════════════════════════════════════════════
+
+// 기둥 조합: 선택높이 → [실제기둥1, 실제기둥2]
+const HOMEDENT_기둥조합 = {
+  1200: [600,600], 1350: [600,750], 1500: [750,750],
+  1650: [750,900], 1800: [900,900], 1950: [900,1050], 2100: [1050,1050],
+};
+
+const HOMEDENT_기둥 = {
+  W: { 600:'3U11C000060', 750:'3U11C000075', 900:'3U11C000090', 1050:'3U11C000105' },
+  B: { 600:'3U11B000060', 750:'3U11B000075', 900:'3U11B000090', 1050:'3U11B000105' },
+};
+
+// 기둥연결브라켓
+const HOMEDENT_브라켓 = { W:'5U6C1100003', B:'5U6B1100003' };
+
+// 안전좌
+const HOMEDENT_안전좌 = { W:'5U56C110001', B:'5U56B110001' };
+
+// 받침 (가로/세로 공용)
+const HOMEDENT_받침 = {
+  W: {300:'3S12C000030V2',400:'3S12C000040V2',500:'3S12C000050V2',600:'3S12C000060V2',
+      700:'3S12C000070V2',800:'3S12C000080V2',900:'3S12C000090V2',1000:'3S12C000100V2',
+      1100:'3S12C000110V2',1200:'3S12C000120V2'},
+  B: {300:'3S12B000030V2',400:'3S12B000040V2',500:'3S12B000050V2',600:'3S12B000060V2',
+      700:'3S12B000070V2',800:'3S12B000080V2',900:'3S12B000090V2',1000:'3S12B000100V2',
+      1100:'3S12B000110V2',1200:'3S12B000120V2'},
+};
+
+// 행거받침
+const HOMEDENT_행거받침 = {
+  W: {
+    400: { left:'4S23W100040V2', right:'4S23W200040V2' },
+    500: { single:'4S23W100050V2' },
+    600: { single:'4S23W200060V2' },
+  },
+  B: {
+    400: { left:'4S23B100040V2', right:'4S23B200040V2' },
+    500: { single:'4S23B100050V2' },
+    600: { single:'4S23B200060V2' },
+  },
+};
+
+// 홈던트 행거형 가능 가로 (행거받침 있는 것만)
+const HOMEDENT_HANGER_WIDTHS = [400, 500, 600];
+
+// ── 홈던트 폼 이벤트 ──────────────────────────────────────
+function onHomeDentFormChange() {
+  const div   = document.getElementById('h-division').value;
+  const color = document.getElementById('h-color').value;
+  const isHanger = div === '행거형';
+
+  const widthSel  = document.getElementById('h-width');
+  const prevWidth = parseInt(widthSel.value);
+
+  if (isHanger) {
+    const allWidths = Object.keys(SPEED_행거봉).map(Number).sort((a,b)=>a-b);
+    widthSel.innerHTML = allWidths.map(w =>
+      `<option value="${w}"${w === prevWidth ? ' selected' : ''}>${w}</option>`
+    ).join('');
+    if (!allWidths.includes(prevWidth)) widthSel.value = String(allWidths[0]);
+  } else {
+    const allWidths = [300,400,500,600,700,800,900,1000,1100,1200];
+    widthSel.innerHTML = allWidths.map(w =>
+      `<option value="${w}"${w === prevWidth ? ' selected' : ''}>${w}</option>`
+    ).join('');
+    if (!allWidths.includes(prevWidth)) widthSel.value = String(allWidths[0]);
+  }
+  const width = parseInt(widthSel.value);
+
+  document.getElementById('field-h-depth').classList.toggle('hidden', false);
+  document.getElementById('field-h-hanger-shelves').classList.toggle('hidden', !isHanger);
+
+  if (isHanger) {
+    // 행거형 세로: 행거받침 규격(400/500/600)만, 가로와 무관
+    const hangerDepths = Object.keys(HOMEDENT_행거받침[color]).map(Number).sort((a,b)=>a-b);
+    _fillDepthSel('h-depth', hangerDepths, hangerDepths);
+  } else {
+    const indepDepths = [300,400,500,600,700,800,900].filter(d => d <= width);
+    _fillDepthSel('h-depth', indepDepths, indepDepths);
+  }
+
+  onHomeDentShelvesChange();
+}
+
+function onHomeDentShelvesChange() {
+  const shelves = parseInt(document.getElementById('h-shelves').value) || 1;
+  const hi = document.getElementById('h-hanger-shelves');
+  hi.max = shelves - 1;
+  if (parseInt(hi.value) >= shelves) hi.value = shelves - 1;
+  updateHomeDentPlywoodPreview();
+}
+
+function updateHomeDentPlywoodPreview() {
+  const thick   = parseInt(document.getElementById('h-plywood').value);
+  const width   = parseInt(document.getElementById('h-width').value);
+  const depth   = parseInt(document.getElementById('h-depth')?.value);
+  const preview = document.getElementById('h-plywood-preview');
+  if (!depth) { preview.textContent = ''; return; }
+  const code = PLYWOOD[thick]?.[`${width}*${depth}`];
+  preview.textContent = code ? '' : `규격 없음: ${width}×${depth}×${thick}T`;
+  if (!code) preview.style.color = 'var(--danger)';
+}
+
+function addHomeDent() {
+  if (!clearRackEntriesIfTypeChanged('홈던트')) return;
+  const division = document.getElementById('h-division').value;
+  const color    = document.getElementById('h-color').value;
+  const height   = parseInt(document.getElementById('h-height').value);
+  const width    = parseInt(document.getElementById('h-width').value);
+  const shelves  = parseInt(document.getElementById('h-shelves').value);
+  const qty      = parseInt(document.getElementById('h-qty').value);
+  const plywoodThick = parseInt(document.getElementById('h-plywood').value);
+  const errEl    = document.getElementById('errorMsg');
+
+  // 단일 기둥 높이 여부
+  const isSingle = [600,750,900,1050].includes(height);
+  if (!isSingle && !HOMEDENT_기둥조합[height]) { errEl.classList.add('show'); return; }
+  if (!HOMEDENT_받침[color][width]) { errEl.classList.add('show'); return; }
+
+  if (division === '독립형') {
+    const depth = parseInt(document.getElementById('h-depth').value);
+    if (!depth || !HOMEDENT_받침[color][depth]) { errEl.classList.add('show'); return; }
+    const pCode = PLYWOOD[plywoodThick]?.[`${width}*${depth}`];
+    if (!pCode) { errEl.classList.add('show'); return; }
+    errEl.classList.remove('show');
+    entries.push({id:entryId++,rackType:'홈던트',division,color,height,isSingle,width,depth,shelves,qty,plywoodThick,plywoodDepth:depth,plywoodCode:pCode});
+  } else {
+    // 행거형
+    const hangerDepth   = parseInt(document.getElementById('h-depth').value);
+    const hangerShelves = parseInt(document.getElementById('h-hanger-shelves').value);
+    if (!hangerDepth || !HOMEDENT_행거받침[color][hangerDepth]) { errEl.classList.add('show'); return; }
+    if (!hangerShelves || hangerShelves >= shelves) { errEl.classList.add('show'); return; }
+    if (!SPEED_행거봉[width]) { errEl.classList.add('show'); return; }
+    const pCode = PLYWOOD[plywoodThick]?.[`${width}*${hangerDepth}`];
+    if (!pCode) { errEl.classList.add('show'); return; }
+    errEl.classList.remove('show');
+    entries.push({id:entryId++,rackType:'홈던트',division,color,height,isSingle,width,depth:hangerDepth,hangerShelves,shelves,qty,plywoodThick,plywoodDepth:hangerDepth,plywoodCode:pCode});
+  }
+  renderAll();
+}
+
+// ════════════════════════════════════════════════════════
+// 용차 운임 데이터 (1.4톤 기준)
+// ════════════════════════════════════════════════════════
+const FREIGHT_DATA = [
+  {addr:'강원도 강릉시',price:240000},{addr:'강원도 강릉시 주문진읍',price:250000},{addr:'강원도 고성군',price:280000},{addr:'강원도 고성군 간성읍',price:260000},{addr:'강원도 동해시',price:250000},{addr:'강원도 삼척시',price:260000},{addr:'강원도 삼척시 원덕읍',price:280000},{addr:'강원도 속초시',price:250000},{addr:'강원도 양구군',price:190000},{addr:'강원도 양양군',price:250000},{addr:'강원도 영월군',price:190000},{addr:'강원도 원주시',price:150000},{addr:'강원도 인제군',price:190000},{addr:'강원도 정선군',price:220000},{addr:'강원도 철원군',price:150000},{addr:'강원도 춘천시',price:150000},{addr:'강원도 태백시',price:250000},{addr:'강원도 평창군',price:190000},{addr:'강원도 평창군 용평면',price:220000},{addr:'강원도 홍천군',price:150000},{addr:'강원도 화천군',price:190000},{addr:'강원도 횡성군',price:150000},
+  {addr:'경기도 가평군',price:120000},{addr:'경기도 고양시 덕양구',price:60000},{addr:'경기도 고양시 일산서구, 동구',price:55000},{addr:'경기도 과천시',price:80000},{addr:'경기도 광명시',price:70000},{addr:'경기도 광주시',price:90000},{addr:'경기도 광주시 곤지암읍',price:90000},{addr:'경기도 광주시 초월읍',price:95000},{addr:'경기도 구리시',price:80000},{addr:'경기도 군포시',price:80000},{addr:'경기도 김포시 고촌',price:50000},{addr:'경기도 김포시 관내',price:45000},{addr:'경기도 남양주시',price:85000},{addr:'경기도 남양주시 청평읍',price:110000},{addr:'경기도 반월공단',price:80000},{addr:'경기도 발안 향남읍',price:95000},{addr:'경기도 부천시',price:60000},{addr:'경기도 성남시',price:80000},{addr:'경기도 성남시 분당구',price:80000},{addr:'경기도 수원 영통구',price:95000},{addr:'경기도 수원시',price:90000},{addr:'경기도 시화공단',price:75000},{addr:'경기도 시흥시',price:75000},{addr:'경기도 안산시',price:80000},{addr:'경기도 안산시 상록구',price:85000},{addr:'경기도 안성시',price:120000},{addr:'경기도 안양시',price:80000},{addr:'경기도 양주시',price:80000},{addr:'경기도 양평군',price:110000},{addr:'경기도 여주시',price:120000},{addr:'경기도 여주시 일죽면',price:120000},{addr:'경기도 연천군',price:100000},{addr:'경기도 오산시',price:95000},{addr:'경기도 용인시',price:100000},{addr:'경기도 용인시 기흥구',price:100000},{addr:'경기도 용인시 기흥구 신갈동',price:90000},{addr:'경기도 용인시 백암면',price:110000},{addr:'경기도 용인시 양지면',price:110000},{addr:'경기도 의왕시',price:80000},{addr:'경기도 의정부시',price:80000},{addr:'경기도 이천시',price:120000},{addr:'경기도 이천시 장호원읍',price:120000},{addr:'경기도 파주시',price:70000},{addr:'경기도 파주시 문산읍',price:75000},{addr:'경기도 파주시 법원읍',price:75000},{addr:'경기도 평택시',price:110000},{addr:'경기도 포천 일동, 이동',price:100000},{addr:'경기도 포천시',price:95000},{addr:'경기도 하남시',price:80000},{addr:'경기도 화성시',price:95000},{addr:'경기도 화성시 병점동',price:90000},
+  {addr:'경상남도 거제시',price:310000},{addr:'경상남도 거창군',price:270000},{addr:'경상남도 고성군',price:280000},{addr:'경상남도 남해군',price:310000},{addr:'경상남도 사천시',price:270000},{addr:'경상남도 산청군',price:270000},{addr:'경상남도 양산시',price:310000},{addr:'경상남도 의령군',price:270000},{addr:'경상남도 진주시',price:270000},{addr:'경상남도 창원시',price:280000},{addr:'경상남도 창원시 마산합포구',price:270000},{addr:'경상남도 창원시 진해구',price:280000},{addr:'경상남도 통영시',price:280000},{addr:'경상남도 하동군',price:270000},{addr:'경상남도 함양군',price:270000},{addr:'경상남도 합천군',price:270000},
+  {addr:'경상북도 경산시',price:250000},{addr:'경상북도 경주시',price:290000},{addr:'경상북도 고령군',price:270000},{addr:'경상북도 구미시',price:220000},{addr:'경상북도 김천시',price:230000},{addr:'경상북도 문경시',price:200000},{addr:'경상북도 밀양시',price:280000},{addr:'경상북도 봉화군',price:210000},{addr:'경상북도 상주시',price:210000},{addr:'경상북도 성주군',price:260000},{addr:'경상북도 영덕군',price:290000},{addr:'경상북도 영양군',price:260000},{addr:'경상북도 영주시',price:200000},{addr:'경상북도 영천시',price:270000},{addr:'경상북도 울진군',price:280000},{addr:'경상북도 창녕군',price:280000},{addr:'경상북도 청도군',price:270000},{addr:'경상북도 청송군',price:280000},{addr:'경상북도 칠곡군 왜관읍',price:240000},{addr:'경상북도 포항시',price:290000},
+  {addr:'광주광역시 광주시',price:260000},
+  {addr:'대구광역시 군위군',price:220000},{addr:'대구광역시 대구시',price:250000},
+  {addr:'대전광역시 대전시',price:160000},
+  {addr:'부산광역시 부산시',price:310000},
+  {addr:'서울특별시 강남구',price:80000},{addr:'서울특별시 강동구',price:80000},{addr:'서울특별시 강북구',price:80000},{addr:'서울특별시 강서구',price:55000},{addr:'서울특별시 관악구',price:80000},{addr:'서울특별시 광진구',price:80000},{addr:'서울특별시 구로구',price:65000},{addr:'서울특별시 금천구',price:65000},{addr:'서울특별시 노원구',price:80000},{addr:'서울특별시 도봉구',price:80000},{addr:'서울특별시 동대문구',price:80000},{addr:'서울특별시 동작구',price:75000},{addr:'서울특별시 마포구',price:70000},{addr:'서울특별시 서대문구',price:70000},{addr:'서울특별시 서초구',price:80000},{addr:'서울특별시 성동구',price:80000},{addr:'서울특별시 성북구',price:80000},{addr:'서울특별시 송파구',price:80000},{addr:'서울특별시 양천구',price:60000},{addr:'서울특별시 영등포구',price:70000},{addr:'서울특별시 용산구',price:70000},{addr:'서울특별시 은평구',price:70000},{addr:'서울특별시 종로구',price:80000},{addr:'서울특별시 중구',price:80000},{addr:'서울특별시 중랑구',price:80000},
+  {addr:'세종특별자치시 세종시',price:150000},
+  {addr:'울산광역시 울산시',price:300000},{addr:'울산광역시 울주군 언양읍',price:310000},
+  {addr:'인천광역시 강화 외곽',price:60000},{addr:'인천광역시 강화읍',price:55000},{addr:'인천광역시 검단',price:50000},{addr:'인천광역시 경서동',price:55000},{addr:'인천광역시 교동',price:80000},{addr:'인천광역시 남동공단',price:60000},{addr:'인천광역시 도화동',price:65000},{addr:'인천광역시 부평',price:65000},{addr:'인천광역시 소래',price:65000},{addr:'인천광역시 송도',price:65000},{addr:'인천광역시 월미도',price:65000},{addr:'인천광역시 인천공항',price:80000},{addr:'인천광역시 주안',price:65000},{addr:'인천광역시 청천동',price:60000},
+  {addr:'전라남도 강진군',price:290000},{addr:'전라남도 고흥군',price:290000},{addr:'전라남도 곡성군',price:270000},{addr:'전라남도 광양시',price:290000},{addr:'전라남도 구례군',price:270000},{addr:'전라남도 나주시',price:260000},{addr:'전라남도 남원시',price:250000},{addr:'전라남도 담양군',price:250000},{addr:'전라남도 목포시',price:270000},{addr:'전라남도 보성군',price:290000},{addr:'전라남도 순천시',price:270000},{addr:'전라남도 여수시',price:310000},{addr:'전라남도 영광군',price:250000},{addr:'전라남도 영암군',price:270000},{addr:'전라남도 완도군',price:340000},{addr:'전라남도 장성군',price:250000},{addr:'전라남도 장흥군',price:270000},{addr:'전라남도 진도군',price:340000},{addr:'전라남도 함평군',price:250000},{addr:'전라남도 해남군',price:310000},
+  {addr:'전라북도 고창군',price:240000},{addr:'전라북도 군산시',price:210000},{addr:'전라북도 김제시',price:210000},{addr:'전라북도 무주군',price:210000},{addr:'전라북도 부안군',price:210000},{addr:'전라북도 부안군 변산면',price:210000},{addr:'전라북도 순창군',price:240000},{addr:'전라북도 익산시',price:220000},{addr:'전라북도 임실군',price:240000},{addr:'전라북도 장수군',price:220000},{addr:'전라북도 전주시',price:220000},{addr:'전라북도 정읍시',price:210000},{addr:'전라북도 진안군',price:220000},
+  {addr:'충청남도 공주시',price:170000},{addr:'충청남도 금산군',price:190000},{addr:'충청남도 금산군 추부면',price:170000},{addr:'충청남도 논산시',price:180000},{addr:'충청남도 당진시',price:150000},{addr:'충청남도 보령시',price:170000},{addr:'충청남도 부여군',price:180000},{addr:'충청남도 서산시',price:160000},{addr:'충청남도 서천군',price:180000},{addr:'충청남도 아산시',price:140000},{addr:'충청남도 예산군',price:150000},{addr:'충청남도 천안시',price:140000},{addr:'충청남도 청양군',price:170000},{addr:'충청남도 태안군',price:170000},
+  {addr:'충청북도 괴산군',price:160000},{addr:'충청북도 단양군',price:170000},{addr:'충청북도 영동군',price:170000},{addr:'충청북도 옥천군',price:180000},{addr:'충청북도 음성군',price:140000},{addr:'충청북도 제천시',price:170000},{addr:'충청북도 증평군',price:140000},{addr:'충청북도 진천군',price:140000},{addr:'충청북도 청주시',price:150000},{addr:'충청북도 충주시',price:170000},
+];
+
+// 운임 폼 이벤트
+function onFreightChange() {
+  const val = document.querySelector('input[name="s-freight"]:checked').value;
+  document.getElementById('field-freight-addr').style.display = val==='용차' ? '' : 'none';
+}
+
+function onFreightSearch() {
+  const q = document.getElementById('freight-search').value.trim();
+  const sel = document.getElementById('freight-addr');
+  const filtered = q ? FREIGHT_DATA.filter(d => d.addr.includes(q)) : FREIGHT_DATA;
+  sel.innerHTML = '<option value="">-- 지역 선택 --</option>' +
+    filtered.map(d => `<option value="${d.price}">${d.addr} (${(d.price/1000).toFixed(0)}천원)</option>`).join('');
+  document.getElementById('freight-price-preview').textContent = '';
+}
+
+function onFreightAddrSelect() {
+  const price = parseInt(document.getElementById('freight-addr').value);
+  const preview = document.getElementById('freight-price-preview');
+  if (!price) { preview.textContent = ''; return; }
+  const w10 = Math.floor(price / 10000);
+  const w1  = Math.round((price % 10000) / 1000);
+  preview.textContent = `${price.toLocaleString()}원 → 10,000원×${w10} + 1,000원×${w1}`;
+}
+
+function onHomeDentFreightChange() {
+  const val = document.querySelector('input[name="h-freight"]:checked').value;
+  document.getElementById('field-h-freight-addr').style.display = val==='용차' ? '' : 'none';
+}
+
+function onHomeDentFreightSearch() {
+  const q = document.getElementById('h-freight-search').value.trim();
+  const sel = document.getElementById('h-freight-addr');
+  const filtered = q ? FREIGHT_DATA.filter(d => d.addr.includes(q)) : FREIGHT_DATA;
+  sel.innerHTML = '<option value="">-- 지역 선택 --</option>' +
+    filtered.map(d => `<option value="${d.price}">${d.addr} (${(d.price/1000).toFixed(0)}천원)</option>`).join('');
+  document.getElementById('h-freight-price-preview').textContent = '';
+}
+
+function onHomeDentFreightAddrSelect() {
+  const price = parseInt(document.getElementById('h-freight-addr').value);
+  const preview = document.getElementById('h-freight-price-preview');
+  if (!price) { preview.textContent = ''; return; }
+  const w10 = Math.floor(price / 10000);
+  const w1  = Math.round((price % 10000) / 1000);
+  preview.textContent = `${price.toLocaleString()}원 → 10,000원×${w10} + 1,000원×${w1}`;
+}
+let entries = [], entryId = 0, currentType = '경량랙';
+
+// ════════════════════════════════════════════════════════
+// 탭
+// ════════════════════════════════════════════════════════
+function switchType(type) {
+  currentType = type;
+  ['경량랙','중량랙','스피드랙','홈던트'].forEach(t => {
+    document.getElementById('form-'+t).style.display = t===type?'':'none';
+    document.getElementById('tab-'+t).className = 'type-tab'+(t===type?' active-'+t:'');
+  });
+  document.getElementById('errorMsg').classList.remove('show');
+  if (type==='홈던트') onHomeDentFormChange();
+  updateAccOptions();
+  populateSingleCatSelect();
+}
+
+// ════════════════════════════════════════════════════════
+// 텍스트 붙여넣기 빠른 입력 (단건 + 여러 건 일괄 저장)
+// ════════════════════════════════════════════════════════
+function parseOrderBlock(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length);
+  const result = {
+    rackType:null, division:null, color:null, plywoodThick:null,
+    rackDims:[], plywoodDims:[],
+    hammerQty:0, hookQty:0, levelQty:0, lplateQty:0,
+    name:'', phone:'', zip:'', address:'', memo:'',
+    unrecognized:[],
+  };
+
+  const recipIdx = lines.findIndex(l => /수취인|배송지/.test(l));
+  const specLines      = recipIdx >= 0 ? lines.slice(0, recipIdx) : lines;
+  let recipientLines    = recipIdx >= 0 ? lines.slice(recipIdx + 1) : [];
+
+  for (const line of specLines) {
+    for (const rt of ['경량랙','중량랙','스피드랙','홈던트']) { if (line.includes(rt)) { result.rackType = rt; break; } }
+    if (result.rackType) break;
+  }
+  for (const line of specLines) {
+    if (line.includes('독립형')) { result.division = '독립형'; break; }
+    if (line.includes('연결형')) { result.division = '연결형'; break; }
+    if (line.includes('행거형')) { result.division = '행거형'; break; }
+  }
+  for (const line of specLines) {
+    if (/화이트|백색/.test(line)) { result.color = 'W'; break; }
+    if (/블랙|흑색|불랙/.test(line)) { result.color = 'B'; break; }
+  }
+  for (const line of specLines) {
+    const idx = line.indexOf('합판');
+    if (idx === -1) continue;
+    const m = line.slice(idx).match(/(\d+)\s*[tT]/);
+    if (m) { result.plywoodThick = +m[1]; break; }
+  }
+
+  const usedForDim = new Set();
+  // 랙 치수 라인 (가로*세로*높이) — 여러 줄 지원 (한 주문에 랙 여러 대 가능)
+  specLines.forEach(line => {
+    const dm = line.match(/(\d{3,4})\s*[\*x×]\s*(\d{3,4})\s*[\*x×]\s*(\d{3,4})/);
+    if (!dm) return;
+    usedForDim.add(line);
+    const entry = { width:+dm[1], depth:+dm[2], height:+dm[3], shelves:null, qty:1 };
+    const sm = line.match(/(\d+)\s*단/);
+    if (sm) entry.shelves = +sm[1];
+    const qm = line.match(/(\d+)\s*(?:세트|대)(?!\S)/);
+    if (qm) entry.qty = +qm[1];
+    result.rackDims.push(entry);
+  });
+
+  // 단독 합판(랙 없이 규격만 표시된 라인, 예: "800*400>2장" / "400*300>3장") — "장" 단위가 명시된 경우만 인정
+  specLines.forEach(line => {
+    if (usedForDim.has(line)) return;
+    const dm = line.match(/(\d{3,4})\s*[\*x×]\s*(\d{3,4})(?!\s*[\*x×]\s*\d)/);
+    if (!dm) return;
+    const qm = line.match(/(\d+)\s*장/);
+    if (!qm) return; // "세트/개" 등 다른 의미로 쓰인 숫자쌍은 합판으로 오인하지 않음
+    result.plywoodDims.push({ width:+dm[1], depth:+dm[2], qty:+qm[1] });
+  });
+
+  // 부속품 키워드 인식
+  specLines.forEach(line => {
+    if (/망치/.test(line)) {
+      if (/필요없음|불필요|없음/.test(line)) return; // 명시적 제외
+      const m = line.match(/(\d+)\s*(?:개|세트)/);
+      result.hammerQty = m ? +m[1] : 1;
+    }
+    if (/후크/.test(line)) {
+      const m = line.match(/(\d+)\s*(?:개|세트)/);
+      result.hookQty = m ? +m[1] : 1;
+    }
+    if (/조절좌/.test(line)) {
+      const m = line.match(/(\d+)\s*(?:개|세트)/);
+      result.levelQty = m ? +m[1] : 1;
+    }
+    if (/L\s*형\s*플레이트/i.test(line)) {
+      const m = line.match(/(\d+)\s*(?:개|세트)/);
+      result.lplateQty = m ? +m[1] : 1;
+    }
+    if (/사이드안전바|단추가/.test(line)) {
+      result.unrecognized.push(line);
+    }
+  });
+
+  // 메모 라인 (수취인 정보 블록 내 "메모 ..." 형태)
+  const memoLine = recipientLines.find(l => /^메모\s*[:：]?\s*/.test(l));
+  if (memoLine) {
+    result.memo = memoLine.replace(/^메모\s*[:：]?\s*/, '').trim();
+    recipientLines = recipientLines.filter(l => l !== memoLine);
+  }
+
+  if (recipientLines.length) {
+    const phoneLine = recipientLines.find(l => /0\d{1,3}[-\s]?\d{3,4}[-\s]?\d{4}/.test(l));
+    const zipLine   = recipientLines.find(l => /\(?\d{5}\)?/.test(l) && l !== phoneLine);
+    const nameLine  = recipientLines.find(l => l !== phoneLine && l !== zipLine) || '';
+    result.name  = nameLine;
+    result.phone = phoneLine ? (phoneLine.match(/0\d{1,3}[-\s]?\d{3,4}[-\s]?\d{4}/) || [''])[0] : '';
+    result.zip   = zipLine ? (zipLine.match(/(\d{5})/) || ['',''])[1] : '';
+    // 우편번호와 주소가 한 줄에 같이 있는 경우, 우편번호만 제거하고 나머지는 주소에 포함
+    const zipRemainder = zipLine ? zipLine.replace(/\(?\d{5}\)?/, '').trim() : '';
+    const used = new Set([nameLine, phoneLine, zipLine]);
+    const restLines = recipientLines.filter(l => !used.has(l));
+    result.address = [zipRemainder, ...restLines].filter(Boolean).join(' ');
+  }
+  return result;
+}
+
+// 파싱 결과를 실제 entries(전역)에 반영 — 단건 화면표시용/일괄저장용 공용
+function applyParsedOrder(r) {
+  const applied = [];
+  const before = entries.length;
+
+  if (r.rackType === '경량랙') {
+    switchType('경량랙');
+    if (r.division) document.getElementById('l-division').value = r.division;
+    r.rackDims.forEach(d => {
+      if (d.width && LIGHT_PARTS.전면빔[d.width]) document.getElementById('l-width').value = d.width;
+      if (d.depth && LIGHT_PARTS.공용받침[d.depth]) document.getElementById('l-depth').value = d.depth;
+      if (d.height && LIGHT_PARTS.기둥[d.height]) document.getElementById('l-height').value = d.height;
+      if (d.shelves) document.getElementById('l-shelves').value = d.shelves;
+      document.getElementById('l-qty').value = d.qty || 1;
+      const n = entries.length; addLightRack();
+      if (entries.length > n) applied.push(`경량랙 ${d.width}*${d.depth}*${d.height} ${d.shelves||''}단`);
+    });
+  } else if (r.rackType === '중량랙') {
+    switchType('중량랙');
+    if (r.division) document.getElementById('m-division').value = r.division;
+    r.rackDims.forEach(d => {
+      if (d.width && MEDIUM_PARTS.전면빔[d.width]) document.getElementById('m-width').value = d.width;
+      if (d.depth && MEDIUM_PARTS.상부받침[d.depth]) document.getElementById('m-depth').value = d.depth;
+      if (d.height && MEDIUM_PARTS.기둥[d.height]) document.getElementById('m-height').value = d.height;
+      if (d.shelves) document.getElementById('m-shelves').value = d.shelves;
+      document.getElementById('m-qty').value = d.qty || 1;
+      const n = entries.length; addMediumRack();
+      if (entries.length > n) applied.push(`중량랙 ${d.width}*${d.depth}*${d.height} ${d.shelves||''}단`);
+    });
+  } else if (r.rackType === '스피드랙') {
+    switchType('스피드랙');
+    if (r.division) document.getElementById('s-division').value = r.division;
+    if (r.color) document.getElementById('s-color').value = r.color;
+    r.rackDims.forEach(d => {
+      if (d.height) document.getElementById('s-height').value = d.height;
+      if (d.width) document.getElementById('s-width').value = d.width;
+      onSpeedFormChange();
+      const divNow = document.getElementById('s-division').value;
+      if (divNow === '독립형' && d.depth) document.getElementById('s-depth').value = d.depth;
+      if (d.shelves) document.getElementById('s-shelves').value = d.shelves;
+      document.getElementById('s-qty').value = d.qty || 1;
+      if (r.plywoodThick && [...document.getElementById('s-plywood').options].some(o=>o.value==String(r.plywoodThick))) {
+        document.getElementById('s-plywood').value = r.plywoodThick;
+      }
+      const n = entries.length; addSpeedRack();
+      if (entries.length > n) applied.push(`스피드랙 ${d.width}*${d.depth}*${d.height} ${d.shelves||''}단`);
+    });
+  } else if (r.rackType === '홈던트') {
+    switchType('홈던트');
+    if (r.division) document.getElementById('h-division').value = r.division;
+    if (r.color) document.getElementById('h-color').value = r.color;
+    r.rackDims.forEach(d => {
+      if (d.height) document.getElementById('h-height').value = d.height;
+      if (d.width) document.getElementById('h-width').value = d.width;
+      onHomeDentFormChange();
+      const divNow = document.getElementById('h-division').value;
+      if (divNow === '독립형' && d.depth) document.getElementById('h-depth').value = d.depth;
+      if (d.shelves) document.getElementById('h-shelves').value = d.shelves;
+      document.getElementById('h-qty').value = d.qty || 1;
+      if (r.plywoodThick && [...document.getElementById('h-plywood').options].some(o=>o.value==String(r.plywoodThick))) {
+        document.getElementById('h-plywood').value = r.plywoodThick;
+      }
+      const n = entries.length; addHomeDent();
+      if (entries.length > n) applied.push(`홈던트 ${d.width}*${d.depth}*${d.height} ${d.shelves||''}단`);
+    });
+  }
+
+  // 단독 합판 (랙 없이)
+  r.plywoodDims.forEach(p => {
+    const thick = r.plywoodThick || 9;
+    const code = PLYWOOD[thick]?.[`${p.width}*${p.depth}`] || PLYWOOD[thick]?.[`${p.depth}*${p.width}`];
+    if (code) {
+      entries.push({ id: entryId++, rackType:'부속품', code, name:'합판', spec:`${p.width}*${p.depth}*${thick}T`, qty:p.qty });
+      applied.push(`합판 ${p.width}*${p.depth}*${thick}T ${p.qty}장`);
+    } else {
+      r.unrecognized.push(`합판 ${p.width}*${p.depth} (규격 코드 없음)`);
+    }
+  });
+
+  if (r.hammerQty > 0) {
+    document.getElementById('acc-select').value = 'hammer';
+    document.getElementById('acc-qty').value = r.hammerQty;
+    addAccessory();
+    applied.push(`우레탄망치 ${r.hammerQty}개`);
+  }
+  if (r.hookQty > 0) {
+    document.getElementById('acc-select').value = r.color === 'B' ? 'hook-b' : 'hook-w';
+    document.getElementById('acc-qty').value = r.hookQty;
+    addAccessory();
+    applied.push(`리버서블C후크 ${r.hookQty}세트(${r.hookQty*4}개)`);
+  }
+  if (r.levelQty > 0) {
+    document.getElementById('acc-select').value = r.rackType === '홈던트' ? 'level-home-6' : 'level-speed-6';
+    document.getElementById('acc-qty').value = r.levelQty;
+    addAccessory();
+    applied.push(`조절좌세트 ${r.levelQty}개 (6mm 기본으로 가정 — 확인 필요)`);
+  }
+  if (r.lplateQty > 0) {
+    document.getElementById('acc-select').value = r.color === 'B' ? 'l-plate-b' : 'l-plate-w';
+    document.getElementById('acc-qty').value = r.lplateQty;
+    addAccessory();
+    applied.push(`L형플레이트세트 ${r.lplateQty}개`);
+  }
+
+  if (r.name)    document.getElementById('recipientName').value  = r.name;
+  if (r.phone)   document.getElementById('recipientPhone').value = r.phone;
+  if (r.zip)     document.getElementById('recipientZip').value   = r.zip;
+  if (r.address) document.getElementById('recipientAddr').value  = r.address;
+  if (r.memo)    document.getElementById('orderMemo').value      = r.memo;
+
+  return { applied, added: entries.length > before };
+}
+
+// ── 텍스트 등록 — 1건이든 여러 건(///)이든 그냥 넣으면 바로 저장 ──
+async function submitQuickEntry() {
+  const text = document.getElementById('quickEntryText').value;
+  const resultEl = document.getElementById('quickEntryResult');
+  if (!text.trim()) { resultEl.textContent = '내용을 입력해주세요.'; return; }
+  if (!currentUser) { resultEl.textContent = '로그인이 필요합니다.'; return; }
+
+  const blocks = text.split(/\/\/\/+/).map(b => b.trim()).filter(b => b.length)
+    .map(b => b.replace(/^발주\s*\d+\s*>?\s*/,'').trim());
+
+  if (!blocks.length) { resultEl.textContent = '내용을 인식하지 못했어요.'; return; }
+
+  resultEl.style.color = 'var(--text2)';
+  resultEl.innerHTML = `${blocks.length}건 처리 중...`;
+
+  const savedEntriesBackup = entries;
+  const savedQtyBackup = qtyOverrides;
+  const report = [];
+
+  for (let i = 0; i < blocks.length; i++) {
+    entries = []; qtyOverrides = {};
+    ['recipientName','recipientPhone','recipientZip','recipientAddr','orderMemo'].forEach(id => document.getElementById(id).value = '');
+
+    const r = parseOrderBlock(blocks[i]);
+    if (!r.rackType && !r.plywoodDims.length) {
+      report.push({ n:i+1, ok:false, msg:'랙 종류/합판 규격을 인식하지 못해 건너뜀', name:r.name || '(이름 미상)' });
+      continue;
+    }
+    const { applied } = applyParsedOrder(r);
+    if (!entries.length) {
+      const reason = (r.rackType && !r.rackDims.length)
+        ? '랙 치수(가로*세로*높이) 정보를 찾지 못함'
+        : '규격 조합 오류로 항목이 추가되지 않음';
+      report.push({ n:i+1, ok:false, msg:reason, name:r.name || '(이름 미상)', unrecognized:r.unrecognized });
+      continue;
+    }
+    const { rows } = calcParts();
+    const parts = rows.filter(row => !row.isHeader);
+    const orderData = {
+      user_id:        currentUser.id,
+      recipient_name: r.name,
+      phone:          r.phone,
+      zipcode:        r.zip,
+      address:        r.address,
+      freight_type:   document.getElementById('recipientFreight')?.value || '택배',
+      memo:           r.memo,
+      entries:        entries,
+      parts:          parts,
+    };
+    const { error } = await sb.from('orders').insert(orderData);
+    if (error) {
+      report.push({ n:i+1, ok:false, msg:'저장 실패: ' + error.message, name:r.name || '(이름 미상)' });
+    } else {
+      report.push({ n:i+1, ok:true, msg:`저장 완료 (${applied.join(', ')})`, name:r.name || '(이름 미상)', unrecognized:r.unrecognized });
+    }
+  }
+
+  entries = savedEntriesBackup; qtyOverrides = savedQtyBackup;
+  renderAll();
+
+  const okCount = report.filter(x=>x.ok).length;
+  resultEl.style.color = okCount === report.length ? 'var(--accent2)' : 'var(--danger)';
+  const single = report.length === 1;
+  resultEl.innerHTML = `<strong>${okCount} / ${report.length}건 저장 완료</strong><br>` +
+    report.map(x => {
+      let line = single ? `${x.ok ? '✓' : '✗'} ${x.msg}` : `발주${x.n} (${x.name}): ${x.ok ? '✓' : '✗'} ${x.msg}`;
+      if (x.unrecognized && x.unrecognized.length) line += ` — ⚠ 미인식: ${x.unrecognized.join(' / ')}`;
+      return line;
+    }).join('<br>');
+
+  showToast(`${okCount}/${report.length}건 저장 완료`);
+}
+
+// 단수 변경 시 행거단수 max 갱신
+function onShelvesChange() {
+  const shelves = parseInt(document.getElementById('s-shelves').value) || 1;
+  const hangerInput = document.getElementById('s-hanger-shelves');
+  hangerInput.max = shelves - 1;
+  if (parseInt(hangerInput.value) >= shelves) hangerInput.value = shelves - 1;
+  updateSpeedPlywoodPreview();
+}
+
+// 구분/가로/합판두께 변경 시 필드 및 세로 옵션 갱신
+function onSpeedFormChange() {
+  const div   = document.getElementById('s-division').value;
+  const thick = parseInt(document.getElementById('s-plywood').value);
+  const color = document.getElementById('s-color').value;
+
+  const isIndep  = div === '독립형';
+  const isConn   = div === '연결형';
+  const isHanger = div === '행거형';
+
+  // 가로 규격 옵션: 행거형이면 400/500/600만
+  const widthSel  = document.getElementById('s-width');
+  const prevWidth = parseInt(widthSel.value);
+  const allWidths = isHanger ? HANGER_WIDTHS : [300,400,500,600,700,800,900,1000,1100,1200,1500];
+  widthSel.innerHTML = allWidths.map(w =>
+    `<option value="${w}"${w === prevWidth ? ' selected' : ''}>${w}</option>`
+  ).join('');
+  if (!allWidths.includes(prevWidth)) widthSel.value = String(allWidths[0]);
+  const width = parseInt(widthSel.value);
+
+  // 필드 표시/숨김 — 독립형·행거형 모두 s-depth 사용
+  document.getElementById('field-s-depth').classList.toggle('hidden', isConn);
+  document.getElementById('field-s-conn-depth').classList.toggle('hidden', !isConn);
+  document.getElementById('field-s-hanger-shelves').classList.toggle('hidden', !isHanger);
+
+  // 스피드랙 받침 가능 세로: 가로 이하 전체 (합판 DB와 무관)
+  const allSpeedDepths = [300,400,500,600,700,800,900];
+
+  if (isConn) {
+    const connDepths = [300,400,500,600].filter(d => d <= width);
+    _fillDepthSel('s-conn-depth', connDepths, connDepths);
+  } else if (isHanger) {
+    const hangerDepths = Object.keys(SPEED_행거받침[color]).map(Number).filter(d => d <= width);
+    _fillDepthSel('s-depth', hangerDepths, hangerDepths);
+  } else {
+    const indepDepths = allSpeedDepths.filter(d => d <= width);
+    _fillDepthSel('s-depth', indepDepths, indepDepths);
+  }
+
+  // 행거단수 max 갱신
+  onShelvesChange();
+}
+
+function _fillDepthSel(selId, allDepths, availDepths) {
+  const sel  = document.getElementById(selId);
+  const prev = parseInt(sel.value);
+  const filtered = allDepths.filter(d => availDepths.includes(d));
+  if (filtered.length) {
+    sel.innerHTML = filtered.map(d =>
+      `<option value="${d}"${d === prev ? ' selected' : ''}>${d}</option>`
+    ).join('');
+    if (!filtered.includes(prev)) sel.value = String(filtered[0]);
+  } else {
+    sel.innerHTML = '';
+  }
+}
+
+function updateSpeedPlywoodPreview() {
+  const thick   = parseInt(document.getElementById('s-plywood').value);
+  const width   = parseInt(document.getElementById('s-width').value);
+  const div     = document.getElementById('s-division').value;
+  const selId   = div === '연결형' ? 's-conn-depth' : 's-depth';
+  const depth   = parseInt(document.getElementById(selId)?.value);
+  const preview = document.getElementById('s-plywood-preview');
+  if (!depth) { preview.textContent = ''; return; }
+  const code = PLYWOOD[thick]?.[`${width}*${depth}`];
+  if (code) {
+    preview.textContent = '';
+  } else {
+    preview.textContent = `규격 없음: ${width}×${depth}×${thick}T`;
+    preview.style.color = 'var(--danger)';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+// 추가
+// ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// 부속품 데이터베이스
+// ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// 커튼 데이터베이스
+// ════════════════════════════════════════════════════════
+// key: `${가로}*${높이}` 또는 `${가로}` (봉세트)
+// 커튼 공통 부품
+const C_BRACKET  = { code:'5S56S00001',  name:'스피드랙/부속/신형_커튼브라켓(좌+우)/N', spec:'-' };
+const C_BRACKET_H= { code:'5S56H00001',  name:'홈던트/부속/신형_커튼브라켓(좌+우)/N',   spec:'-' };
+const C_ROLLER   = { code:'5S56Z000001', name:'공용/부속/커튼롤러&핀(각14개_1세트)/N',  spec:'-' };
+
+const CURTAIN_DB = {
+  'curtain-side': {
+    name: '공용/부품/사이드커튼세트/N',
+    specs: [
+      { key:'500*1950', code:'CBUAC2-XXXXCC-XX051950XX', label:'500*1950', items:[ {code:'5S56Z052190', name:'공용/부속/신형_사이드커튼500_1호(좌우 2장,1세트)/N', spec:'-'}, {code:'2S56C202317', name:'공용/부속/사이드커튼상단클립/N', spec:'-', qty:4}, {code:'2S56C104210', name:'공용/부속/사이드커튼측면클립/N', spec:'-', qty:8} ] },
+      { key:'500*2100', code:'CBUAC2-XXXXCC-XX052100XX', label:'500*2100', items:[ {code:'5S56Z0522050', name:'공용/부속/신형_사이드커튼500_2호(좌우 2장,1세트)/N', spec:'-'}, {code:'2S56C202317', name:'공용/부속/사이드커튼상단클립/N', spec:'-', qty:4}, {code:'2S56C104210', name:'공용/부속/사이드커튼측면클립/N', spec:'-', qty:8} ] },
+      { key:'600*1950', code:'CBUAC2-XXXXCC-XX061950XX', label:'600*1950', items:[ {code:'5S56Z062190', name:'공용/부속/신형_사이드커튼600_1호(좌우 2장,1세트)/N', spec:'-'}, {code:'2S56C202317', name:'공용/부속/사이드커튼상단클립/N', spec:'-', qty:4}, {code:'2S56C104210', name:'공용/부속/사이드커튼측면클립/N', spec:'-', qty:8} ] },
+      { key:'600*2100', code:'CBUAC2-XXXXCC-XX062100XX', label:'600*2100', items:[ {code:'5S56Z062205', name:'공용/부속/신형_사이드커튼600_2호(좌우 2장,1세트)/N', spec:'-'}, {code:'2S56C202317', name:'공용/부속/사이드커튼상단클립/N', spec:'-', qty:4}, {code:'2S56C104210', name:'공용/부속/사이드커튼측면클립/N', spec:'-', qty:8} ] },
+    ],
+  },
+  'curtain-speed-front': {
+    name: '스피드랙/부품/정면커튼세트/N',
+    specs: [
+      { key:'600*1800',  code:'SBUAC1-XXXXCC-06XX1800XX', label:'600*1800',  items:[ {code:'5S56Z000060',  name:'공용/부속/신형_커튼봉/N', spec:'600'}, C_BRACKET, C_ROLLER, {code:'5S56Z125175', name:'공용/부속/신형_정면커튼_1호/N', spec:'-'} ] },
+      { key:'600*1950',  code:'SBUAC1-XXXXCC-06XX1950XX', label:'600*1950',  items:[ {code:'5S56Z000060',  name:'공용/부속/신형_커튼봉/N', spec:'600'}, C_BRACKET, C_ROLLER, {code:'5S56Z125190', name:'공용/부속/신형_정면커튼_2호/N', spec:'-'} ] },
+      { key:'600*2100',  code:'SBUAC1-XXXXCC-06XX2100XX', label:'600*2100',  items:[ {code:'5S56Z000060',  name:'공용/부속/신형_커튼봉/N', spec:'600'}, C_BRACKET, C_ROLLER, {code:'5S56Z125205', name:'공용/부속/신형_정면커튼_3호/N', spec:'-'} ] },
+      { key:'700*1800',  code:'SBUAC1-XXXXCC-07XX1800XX', label:'700*1800',  items:[ {code:'5S56Z000070',  name:'공용/부속/신형_커튼봉/N', spec:'700'}, C_BRACKET, C_ROLLER, {code:'5S56Z125175', name:'공용/부속/신형_정면커튼_1호/N', spec:'-'} ] },
+      { key:'700*1950',  code:'SBUAC1-XXXXCC-07XX1950XX', label:'700*1950',  items:[ {code:'5S56Z000070',  name:'공용/부속/신형_커튼봉/N', spec:'700'}, C_BRACKET, C_ROLLER, {code:'5S56Z125190', name:'공용/부속/신형_정면커튼_2호/N', spec:'-'} ] },
+      { key:'700*2100',  code:'SBUAC1-XXXXCC-07XX2100XX', label:'700*2100',  items:[ {code:'5S56Z000070',  name:'공용/부속/신형_커튼봉/N', spec:'700'}, C_BRACKET, C_ROLLER, {code:'5S56Z125205', name:'공용/부속/신형_정면커튼_3호/N', spec:'-'} ] },
+      { key:'800*1800',  code:'SBUAC1-XXXXCC-08XX1800XX', label:'800*1800',  items:[ {code:'5S56Z000080',  name:'공용/부속/신형_커튼봉/N', spec:'800'}, C_BRACKET, C_ROLLER, {code:'5S56Z125175', name:'공용/부속/신형_정면커튼_1호/N', spec:'-'} ] },
+      { key:'800*1950',  code:'SBUAC1-XXXXCC-08XX1950XX', label:'800*1950',  items:[ {code:'5S56Z000080',  name:'공용/부속/신형_커튼봉/N', spec:'800'}, C_BRACKET, C_ROLLER, {code:'5S56Z125190', name:'공용/부속/신형_정면커튼_2호/N', spec:'-'} ] },
+      { key:'800*2100',  code:'SBUAC1-XXXXCC-08XX2100XX', label:'800*2100',  items:[ {code:'5S56Z000080',  name:'공용/부속/신형_커튼봉/N', spec:'800'}, C_BRACKET, C_ROLLER, {code:'5S56Z125205', name:'공용/부속/신형_정면커튼_3호/N', spec:'-'} ] },
+      { key:'900*1800',  code:'SBUAC1-XXXXCC-09XX1800XX', label:'900*1800',  items:[ {code:'5S56Z000090',  name:'공용/부속/신형_커튼봉/N', spec:'900'}, C_BRACKET, C_ROLLER, {code:'5S56Z125175', name:'공용/부속/신형_정면커튼_1호/N', spec:'-'} ] },
+      { key:'900*1950',  code:'SBUAC1-XXXXCC-09XX1950XX', label:'900*1950',  items:[ {code:'5S56Z000090',  name:'공용/부속/신형_커튼봉/N', spec:'900'}, C_BRACKET, C_ROLLER, {code:'5S56Z125190', name:'공용/부속/신형_정면커튼_2호/N', spec:'-'} ] },
+      { key:'900*2100',  code:'SBUAC1-XXXXCC-09XX2100XX', label:'900*2100',  items:[ {code:'5S56Z000090',  name:'공용/부속/신형_커튼봉/N', spec:'900'}, C_BRACKET, C_ROLLER, {code:'5S56Z125205', name:'공용/부속/신형_정면커튼_3호/N', spec:'-'} ] },
+      { key:'1000*1800', code:'SBUAC1-XXXXCC-10XX1800XX', label:'1000*1800', items:[ {code:'5S56Z000100',  name:'공용/부속/신형_커튼봉/N', spec:'1000'}, C_BRACKET, C_ROLLER, {code:'5S56Z125175', name:'공용/부속/신형_정면커튼_1호/N', spec:'-'} ] },
+      { key:'1000*1950', code:'SBUAC1-XXXXCC-10XX1950XX', label:'1000*1950', items:[ {code:'5S56Z000100',  name:'공용/부속/신형_커튼봉/N', spec:'1000'}, C_BRACKET, C_ROLLER, {code:'5S56Z125190', name:'공용/부속/신형_정면커튼_2호/N', spec:'-'} ] },
+      { key:'1000*2100', code:'SBUAC1-XXXXCC-10XX2100XX', label:'1000*2100', items:[ {code:'5S56Z000100',  name:'공용/부속/신형_커튼봉/N', spec:'1000'}, C_BRACKET, C_ROLLER, {code:'5S56Z125205', name:'공용/부속/신형_정면커튼_3호/N', spec:'-'} ] },
+      { key:'1200*1800', code:'SBUAC1-XXXXCC-12XX1800XX', label:'1200*1800', items:[ {code:'5S56Z000120N', name:'공용/부속/신형_커튼봉/N', spec:'1200'}, C_BRACKET, C_ROLLER, {code:'5S56Z125175', name:'공용/부속/신형_정면커튼_1호/N', spec:'-'} ] },
+      { key:'1200*1950', code:'SBUAC1-XXXXCC-12XX1950XX', label:'1200*1950', items:[ {code:'5S56Z000120N', name:'공용/부속/신형_커튼봉/N', spec:'1200'}, C_BRACKET, C_ROLLER, {code:'5S56Z125190', name:'공용/부속/신형_정면커튼_2호/N', spec:'-'} ] },
+      { key:'1200*2100', code:'SBUAC1-XXXXCC-12XX2100XX', label:'1200*2100', items:[ {code:'5S56Z000120N', name:'공용/부속/신형_커튼봉/N', spec:'1200'}, C_BRACKET, C_ROLLER, {code:'5S56Z125205', name:'공용/부속/신형_정면커튼_3호/N', spec:'-'} ] },
+    ],
+  },
+  'curtain-speed-bar': {
+    name: '스피드랙/부품/커튼봉세트/N',
+    specs: [
+      { key:'600',  code:'SBUAC3-XXXXTC-06XXXXXXXX', label:'600mm',  items:[ {code:'5S56Z000060',  name:'공용/부속/신형_커튼봉/N', spec:'600'},  C_BRACKET, C_ROLLER ] },
+      { key:'700',  code:'SBUAC3-XXXXTC-07XXXXXXXX', label:'700mm',  items:[ {code:'5S56Z000070',  name:'공용/부속/신형_커튼봉/N', spec:'700'},  C_BRACKET, C_ROLLER ] },
+      { key:'800',  code:'SBUAC3-XXXXTC-08XXXXXXXX', label:'800mm',  items:[ {code:'5S56Z000080',  name:'공용/부속/신형_커튼봉/N', spec:'800'},  C_BRACKET, C_ROLLER ] },
+      { key:'900',  code:'SBUAC3-XXXXTC-09XXXXXXXX', label:'900mm',  items:[ {code:'5S56Z000090',  name:'공용/부속/신형_커튼봉/N', spec:'900'},  C_BRACKET, C_ROLLER ] },
+      { key:'1000', code:'SBUAC3-XXXXTC-10XXXXXXXX', label:'1000mm', items:[ {code:'5S56Z000100',  name:'공용/부속/신형_커튼봉/N', spec:'1000'}, C_BRACKET, C_ROLLER ] },
+      { key:'1100', code:'SBUAC3-XXXXTC-11XXXXXXXX', label:'1100mm', items:[ {code:'5S56Z000110',  name:'공용/부속/신형_커튼봉/N', spec:'1100'}, C_BRACKET, C_ROLLER ] },
+      { key:'1200', code:'SBUAC3-XXXXTC-12XXXXXXXX', label:'1200mm', items:[ {code:'5S56Z000120N', name:'공용/부속/신형_커튼봉/N', spec:'1200'}, C_BRACKET, C_ROLLER ] },
+    ],
+  },
+  'curtain-home-front': {
+    name: 'H하우스/부품/정면커튼세트/N',
+    specs: [
+      { key:'600*1800',  code:'HBUAC1-XXXXCC-06XX1800XX', label:'600*1800',  items:[ {code:'5S56Z125175', name:'공용/부속/신형_정면커튼_1호/N', spec:'-'}, C_ROLLER, C_BRACKET_H, {code:'5S56Z000060',  name:'공용/부속/신형_커튼봉/N', spec:'600'} ] },
+      { key:'600*1950',  code:'HBUAC1-XXXXCC-06XX1950XX', label:'600*1950',  items:[ {code:'5S56Z125190', name:'공용/부속/신형_정면커튼_2호/N', spec:'-'}, C_ROLLER, C_BRACKET_H, {code:'5S56Z000060',  name:'공용/부속/신형_커튼봉/N', spec:'600'} ] },
+      { key:'600*2100',  code:'HBUAC1-XXXXCC-06XX2100XX', label:'600*2100',  items:[ {code:'5S56Z000060',  name:'공용/부속/신형_커튼봉/N', spec:'600'}, C_BRACKET_H, C_ROLLER, {code:'5S56Z125205', name:'공용/부속/신형_정면커튼_3호/N', spec:'-'} ] },
+      { key:'700*1800',  code:'HBUAC1-XXXXCC-07XX1800XX', label:'700*1800',  items:[ {code:'5S56Z125175', name:'공용/부속/신형_정면커튼_1호/N', spec:'-'}, C_ROLLER, C_BRACKET_H, {code:'5S56Z000070',  name:'공용/부속/신형_커튼봉/N', spec:'700'} ] },
+      { key:'700*1950',  code:'HBUAC1-XXXXCC-07XX1950XX', label:'700*1950',  items:[ {code:'5S56Z125190', name:'공용/부속/신형_정면커튼_2호/N', spec:'-'}, C_ROLLER, C_BRACKET_H, {code:'5S56Z000070',  name:'공용/부속/신형_커튼봉/N', spec:'700'} ] },
+      { key:'700*2100',  code:'HBUAC1-XXXXCC-07XX2100XX', label:'700*2100',  items:[ {code:'5S56Z000070',  name:'공용/부속/신형_커튼봉/N', spec:'700'}, C_BRACKET_H, C_ROLLER, {code:'5S56Z125205', name:'공용/부속/신형_정면커튼_3호/N', spec:'-'} ] },
+      { key:'800*1800',  code:'HBUAC1-XXXXCC-08XX1800XX', label:'800*1800',  items:[ {code:'5S56Z125175', name:'공용/부속/신형_정면커튼_1호/N', spec:'-'}, C_ROLLER, C_BRACKET_H, {code:'5S56Z000080',  name:'공용/부속/신형_커튼봉/N', spec:'800'} ] },
+      { key:'800*1950',  code:'HBUAC1-XXXXCC-08XX1950XX', label:'800*1950',  items:[ {code:'5S56Z125190', name:'공용/부속/신형_정면커튼_2호/N', spec:'-'}, C_ROLLER, C_BRACKET_H, {code:'5S56Z000080',  name:'공용/부속/신형_커튼봉/N', spec:'800'} ] },
+      { key:'800*2100',  code:'HBUAC1-XXXXCC-08XX2100XX', label:'800*2100',  items:[ {code:'5S56Z000080',  name:'공용/부속/신형_커튼봉/N', spec:'800'}, C_BRACKET_H, C_ROLLER, {code:'5S56Z125205', name:'공용/부속/신형_정면커튼_3호/N', spec:'-'} ] },
+      { key:'900*1800',  code:'HBUAC1-XXXXCC-09XX1800XX', label:'900*1800',  items:[ {code:'5S56Z125175', name:'공용/부속/신형_정면커튼_1호/N', spec:'-'}, C_ROLLER, C_BRACKET_H, {code:'5S56Z000090',  name:'공용/부속/신형_커튼봉/N', spec:'900'} ] },
+      { key:'900*1950',  code:'HBUAC1-XXXXCC-09XX1950XX', label:'900*1950',  items:[ {code:'5S56Z125190', name:'공용/부속/신형_정면커튼_2호/N', spec:'-'}, C_ROLLER, C_BRACKET_H, {code:'5S56Z000090',  name:'공용/부속/신형_커튼봉/N', spec:'900'} ] },
+      { key:'900*2100',  code:'HBUAC1-XXXXCC-09XX2100XX', label:'900*2100',  items:[ {code:'5S56Z000090',  name:'공용/부속/신형_커튼봉/N', spec:'900'}, C_BRACKET_H, C_ROLLER, {code:'5S56Z125205', name:'공용/부속/신형_정면커튼_3호/N', spec:'-'} ] },
+      { key:'1000*1800', code:'HBUAC1-XXXXCC-10XX1800XX', label:'1000*1800', items:[ {code:'5S56Z000100',  name:'공용/부속/신형_커튼봉/N', spec:'1000'}, C_BRACKET_H, C_ROLLER, {code:'5S56Z125175', name:'공용/부속/신형_정면커튼_1호/N', spec:'-'} ] },
+      { key:'1000*1950', code:'HBUAC1-XXXXCC-10XX1950XX', label:'1000*1950', items:[ {code:'5S56Z000100',  name:'공용/부속/신형_커튼봉/N', spec:'1000'}, C_BRACKET_H, C_ROLLER, {code:'5S56Z125190', name:'공용/부속/신형_정면커튼_2호/N', spec:'-'} ] },
+      { key:'1000*2100', code:'HBUAC1-XXXXCC-10XX2100XX', label:'1000*2100', items:[ {code:'5S56Z000100',  name:'공용/부속/신형_커튼봉/N', spec:'1000'}, C_BRACKET_H, C_ROLLER, {code:'5S56Z125205', name:'공용/부속/신형_정면커튼_3호/N', spec:'-'} ] },
+      { key:'1200*1800', code:'HBUAC1-XXXXCC-12XX1800XX', label:'1200*1800', items:[ {code:'5S56Z000120N', name:'공용/부속/신형_커튼봉/N', spec:'1200'}, C_BRACKET_H, C_ROLLER, {code:'5S56Z125175', name:'공용/부속/신형_정면커튼_1호/N', spec:'-'} ] },
+      { key:'1200*1950', code:'HBUAC1-XXXXCC-12XX1950XX', label:'1200*1950', items:[ {code:'5S56Z000120N', name:'공용/부속/신형_커튼봉/N', spec:'1200'}, C_BRACKET_H, C_ROLLER, {code:'5S56Z125190', name:'공용/부속/신형_정면커튼_2호/N', spec:'-'} ] },
+      { key:'1200*2100', code:'HBUAC1-XXXXCC-12XX2100XX', label:'1200*2100', items:[ {code:'5S56Z000120N', name:'공용/부속/신형_커튼봉/N', spec:'1200'}, C_BRACKET_H, C_ROLLER, {code:'5S56Z125205', name:'공용/부속/신형_정면커튼_3호/N', spec:'-'} ] },
+    ],
+  },
+  'curtain-home-bar': {
+    name: 'H하우스/부품/커튼봉세트/N',
+    specs: [
+      { key:'600',  code:'HBUAC3-XXXXTC-06XXXXXXXX', label:'600mm',  items:[ C_ROLLER, C_BRACKET_H, {code:'5S56Z000060',  name:'공용/부속/신형_커튼봉/N', spec:'600'} ] },
+      { key:'700',  code:'HBUAC3-XXXXTC-07XXXXXXXX', label:'700mm',  items:[ C_ROLLER, C_BRACKET_H, {code:'5S56Z000070',  name:'공용/부속/신형_커튼봉/N', spec:'700'} ] },
+      { key:'800',  code:'HBUAC3-XXXXTC-08XXXXXXXX', label:'800mm',  items:[ C_ROLLER, C_BRACKET_H, {code:'5S56Z000080',  name:'공용/부속/신형_커튼봉/N', spec:'800'} ] },
+      { key:'900',  code:'HBUAC3-XXXXTC-09XXXXXXXX', label:'900mm',  items:[ C_ROLLER, C_BRACKET_H, {code:'5S56Z000090',  name:'공용/부속/신형_커튼봉/N', spec:'900'} ] },
+      { key:'1000', code:'HBUAC3-XXXXTC-10XXXXXXXX', label:'1000mm', items:[ {code:'5S56Z000100',  name:'공용/부속/신형_커튼봉/N', spec:'1000'}, C_BRACKET_H, C_ROLLER ] },
+      { key:'1100', code:'HBUAC3-XXXXTC-11XXXXXXXX', label:'1100mm', items:[ {code:'5S56Z000110',  name:'공용/부속/신형_커튼봉/N', spec:'1100'}, C_BRACKET_H, C_ROLLER ] },
+      { key:'1200', code:'HBUAC3-XXXXTC-12XXXXXXXX', label:'1200mm', items:[ {code:'5S56Z000120N', name:'공용/부속/신형_커튼봉/N', spec:'1200'}, C_BRACKET_H, C_ROLLER ] },
+    ],
+  },
+};
+
+// 메쉬보드 공통 부품
+const M_BRACKET_S = { code:'3S56T110020', name:'스피드랙/부속/메쉬보드브라켓/N', spec:'-' };
+const M_BRACKET_H = { code:'3S56T110021', name:'홈던트/부속/메쉬보드브라켓/N',   spec:'-' };
+const M_HOOK_B    = { code:'99B99000050', name:'공용/부속/메쉬후크/B',            spec:'-' };
+const M_HOOK_W    = { code:'99W99000050', name:'공용/부속/메쉬후크/W',            spec:'-' };
+const M_SHOOK     = { code:'99BS9934684', name:'공용/부속/에스후크/N',            spec:'-' };
+const M_BHOOK     = { code:'1S56T286238S',name:'스피드랙/부속/브랜드후크/N',      spec:'-' };
+
+const MESH_DB = {
+  // 스피드랙/메쉬보드세트/B
+  'mesh-speed-b': {
+    name: '스피드랙/부품/메쉬보드세트/B',
+    specs: [
+      // 브라켓4 only
+      { key:'6Z000BO0304000', label:'300*400(메쉬보드1+브라켓4)', items:[
+          {code:'3S56B300400', name:'공용/부속/메쉬보드/B', spec:'300*400'}, {code:'3S56T110020', name:'스피드랙/부속/메쉬보드브라켓/N', spec:'-', qty:4} ] },
+      { key:'6Z000BO0506000', label:'500*600(메쉬보드1+브라켓4)', items:[
+          {code:'3S56B500600', name:'공용/부속/메쉬보드/B', spec:'500*600'}, {code:'3S56T110020', name:'스피드랙/부속/메쉬보드브라켓/N', spec:'-', qty:4} ] },
+      { key:'6Z000BO0804000', label:'400*800(메쉬보드1+브라켓4)', items:[
+          {code:'3S56B800400', name:'공용/부속/메쉬보드/B', spec:'400*800'}, {code:'3S56T110020', name:'스피드랙/부속/메쉬보드브라켓/N', spec:'-', qty:4} ] },
+      // 풀세트
+      { key:'6Z000BO0304001', label:'300*400(메쉬보드2+브라켓8+메쉬후크4+에스후크4+후크4)', items:[
+          {code:'3S56B300400', name:'공용/부속/메쉬보드/B', spec:'300*400', qty:2}, {code:'3S56T110020', name:'스피드랙/부속/메쉬보드브라켓/N', spec:'-', qty:8},
+          {code:'99B99000050', name:'공용/부속/메쉬후크/B', spec:'-', qty:4}, {code:'99BS9934684', name:'공용/부속/에스후크/N', spec:'-', qty:4},
+          {code:'1S56T286238S', name:'스피드랙/부속/브랜드후크/N', spec:'-', qty:4} ] },
+      { key:'6Z000BO0506001', label:'500*600(메쉬보드2+브라켓8+메쉬후크4+에스후크4+후크4)', items:[
+          {code:'3S56B500600', name:'공용/부속/메쉬보드/B', spec:'500*600', qty:2}, {code:'3S56T110020', name:'스피드랙/부속/메쉬보드브라켓/N', spec:'-', qty:8},
+          {code:'99B99000050', name:'공용/부속/메쉬후크/B', spec:'-', qty:4}, {code:'99BS9934684', name:'공용/부속/에스후크/N', spec:'-', qty:4},
+          {code:'1S56T286238S', name:'스피드랙/부속/브랜드후크/N', spec:'-', qty:4} ] },
+      { key:'6Z000BO0804001', label:'400*800(메쉬보드2+브라켓8+메쉬후크4+에스후크4+후크4)', items:[
+          {code:'3S56B800400', name:'공용/부속/메쉬보드/B', spec:'400*800', qty:2}, {code:'3S56T110020', name:'스피드랙/부속/메쉬보드브라켓/N', spec:'-', qty:8},
+          {code:'99B99000050', name:'공용/부속/메쉬후크/B', spec:'-', qty:4}, {code:'99BS9934684', name:'공용/부속/에스후크/N', spec:'-', qty:4},
+          {code:'1S56T286238S', name:'스피드랙/부속/브랜드후크/N', spec:'-', qty:4} ] },
+    ],
+  },
+  // 스피드랙/메쉬보드세트/W
+  'mesh-speed-w': {
+    name: '스피드랙/부품/메쉬보드세트/W',
+    specs: [
+      { key:'6Z000WO0304000', label:'300*400(메쉬보드1+브라켓4)', items:[
+          {code:'3S56W300400', name:'공용/부속/메쉬보드/W', spec:'300*400'}, {code:'3S56T110020', name:'스피드랙/부속/메쉬보드브라켓/N', spec:'-', qty:4} ] },
+      { key:'6Z000WO0506000', label:'500*600(메쉬보드1+브라켓4)', items:[
+          {code:'3S56W500600', name:'공용/부속/메쉬보드/W', spec:'500*600'}, {code:'3S56T110020', name:'스피드랙/부속/메쉬보드브라켓/N', spec:'-', qty:4} ] },
+      { key:'6Z000WO0804000', label:'400*800(메쉬보드1+브라켓4)', items:[
+          {code:'3S56W800400', name:'공용/부속/메쉬보드/W', spec:'400*800'}, {code:'3S56T110020', name:'스피드랙/부속/메쉬보드브라켓/N', spec:'-', qty:4} ] },
+      { key:'6Z000WO0304001', label:'300*400(메쉬보드2+브라켓8+메쉬후크4+에스후크4+후크4)', items:[
+          {code:'3S56W300400', name:'공용/부속/메쉬보드/W', spec:'300*400', qty:2}, {code:'3S56T110020', name:'스피드랙/부속/메쉬보드브라켓/N', spec:'-', qty:8},
+          {code:'99W99000050', name:'공용/부속/메쉬후크/W', spec:'-', qty:4}, {code:'99BS9934684', name:'공용/부속/에스후크/N', spec:'-', qty:4},
+          {code:'1S56T286238S', name:'스피드랙/부속/브랜드후크/N', spec:'-', qty:4} ] },
+      { key:'6Z000WO0506001', label:'500*600(메쉬보드2+브라켓8+메쉬후크4+에스후크4+후크4)', items:[
+          {code:'3S56W500600', name:'공용/부속/메쉬보드/W', spec:'500*600', qty:2}, {code:'3S56T110020', name:'스피드랙/부속/메쉬보드브라켓/N', spec:'-', qty:8},
+          {code:'99W99000050', name:'공용/부속/메쉬후크/W', spec:'-', qty:4}, {code:'99BS9934684', name:'공용/부속/에스후크/N', spec:'-', qty:4},
+          {code:'1S56T286238S', name:'스피드랙/부속/브랜드후크/N', spec:'-', qty:4} ] },
+      { key:'6Z000WO0804001', label:'400*800(메쉬보드2+브라켓8+메쉬후크4+에스후크4+후크4)', items:[
+          {code:'3S56W800400', name:'공용/부속/메쉬보드/W', spec:'400*800', qty:2}, {code:'3S56T110020', name:'스피드랙/부속/메쉬보드브라켓/N', spec:'-', qty:8},
+          {code:'99W99000050', name:'공용/부속/메쉬후크/W', spec:'-', qty:4}, {code:'99BS9934684', name:'공용/부속/에스후크/N', spec:'-', qty:4},
+          {code:'1S56T286238S', name:'스피드랙/부속/브랜드후크/N', spec:'-', qty:4} ] },
+    ],
+  },
+  // H하우스/메쉬보드세트/B
+  'mesh-home-b': {
+    name: 'H하우스/부품/메쉬보드세트/B',
+    specs: [
+      { key:'HA016BO0304000', label:'300*400(메쉬보드2+브라켓9+메쉬후크4+에스후크4)', items:[
+          {code:'3S56B300400', name:'공용/부속/메쉬보드/B', spec:'300*400', qty:2}, {code:'3S56T110021', name:'홈던트/부속/메쉬보드브라켓/N', spec:'-', qty:9},
+          {code:'99B99000050', name:'공용/부속/메쉬후크/B', spec:'-', qty:4}, {code:'99BS9934684', name:'공용/부속/에스후크/N', spec:'-', qty:4} ] },
+      { key:'HA016BO0506000', label:'500*600(메쉬보드2+브라켓9+메쉬후크4+에스후크4)', items:[
+          {code:'3S56B500600', name:'공용/부속/메쉬보드/B', spec:'500*600', qty:2}, {code:'3S56T110021', name:'홈던트/부속/메쉬보드브라켓/N', spec:'-', qty:9},
+          {code:'99B99000050', name:'공용/부속/메쉬후크/B', spec:'-', qty:4}, {code:'99BS9934684', name:'공용/부속/에스후크/N', spec:'-', qty:4} ] },
+      { key:'HA016BO0804000', label:'400*800(메쉬보드2+브라켓9+메쉬후크4+에스후크4)', items:[
+          {code:'3S56B800400', name:'공용/부속/메쉬보드/B', spec:'400*800', qty:2}, {code:'3S56T110021', name:'홈던트/부속/메쉬보드브라켓/N', spec:'-', qty:9},
+          {code:'99B99000050', name:'공용/부속/메쉬후크/B', spec:'-', qty:4}, {code:'99BS9934684', name:'공용/부속/에스후크/N', spec:'-', qty:4} ] },
+    ],
+  },
+  // H하우스/메쉬보드세트/W
+  'mesh-home-w': {
+    name: 'H하우스/부품/메쉬보드세트/W',
+    specs: [
+      { key:'HA016CO0304000', label:'300*400(메쉬보드2+브라켓9+메쉬후크4+에스후크4)', items:[
+          {code:'3S56W300400', name:'공용/부속/메쉬보드/W', spec:'300*400', qty:2}, {code:'3S56T110021', name:'홈던트/부속/메쉬보드브라켓/N', spec:'-', qty:9},
+          {code:'99W99000050', name:'공용/부속/메쉬후크/W', spec:'-', qty:4}, {code:'99BS9934684', name:'공용/부속/에스후크/N', spec:'-', qty:4} ] },
+      { key:'HA016CO0506000', label:'500*600(메쉬보드2+브라켓9+메쉬후크4+에스후크4)', items:[
+          {code:'3S56W500600', name:'공용/부속/메쉬보드/W', spec:'500*600', qty:2}, {code:'3S56T110021', name:'홈던트/부속/메쉬보드브라켓/N', spec:'-', qty:9},
+          {code:'99W99000050', name:'공용/부속/메쉬후크/W', spec:'-', qty:4}, {code:'99BS9934684', name:'공용/부속/에스후크/N', spec:'-', qty:4} ] },
+      { key:'HA016CO0804000', label:'400*800(메쉬보드2+브라켓9+메쉬후크4+에스후크4)', items:[
+          {code:'3S56W800400', name:'공용/부속/메쉬보드/W', spec:'400*800', qty:2}, {code:'3S56T110021', name:'홈던트/부속/메쉬보드브라켓/N', spec:'-', qty:9},
+          {code:'99W99000050', name:'공용/부속/메쉬후크/W', spec:'-', qty:4}, {code:'99BS9934684', name:'공용/부속/에스후크/N', spec:'-', qty:4} ] },
+    ],
+  },
+};
+const ACC_PARTS = {
+  'hammer': {
+    label:'신형우레탄망치(중)',
+    speedHome: false,
+    items:[{ code:'2S560CH0248', name:'공용/부속/신형우레탄망치(중)/N', spec:'-', qty:1 }],
+  },
+  'hook-w': {
+    label:'리버서블C후크 (화이트) — 1세트=4개',
+    speedHome: false,
+    items:[{ code:'2S56W0000002', name:'공용/부속/리버서블C후크/W', spec:'백색', qty:4 }],
+  },
+  'hook-b': {
+    label:'리버서블C후크 (블랙) — 1세트=4개',
+    speedHome: false,
+    items:[{ code:'2S56B0000002', name:'공용/부속/리버서블C후크/B', spec:'흑색', qty:4 }],
+  },
+  'clip-speed-w': {
+    label:'기둥고정클립 스피드랙 (화이트)',
+    speedHome: false,
+    items:[{ code:'3S56C605029', name:'스피드랙/부속/기둥고정클립/W', spec:'-', qty:1 }],
+  },
+  'clip-speed-b': {
+    label:'기둥고정클립 스피드랙 (블랙)',
+    speedHome: false,
+    items:[{ code:'3S56B605029', name:'스피드랙/부속/기둥고정클립/B', spec:'-', qty:1 }],
+  },
+  'clip-home-w': {
+    label:'기둥고정클립 홈던트 (화이트)',
+    speedHome: false,
+    items:[{ code:'3H56C605029', name:'홈던트/부속/기둥고정클립/W', spec:'-', qty:1 }],
+  },
+  'clip-home-b': {
+    label:'기둥고정클립 홈던트 (블랙)',
+    speedHome: false,
+    items:[{ code:'3H56B605029', name:'홈던트/부속/기둥고정클립/B', spec:'-', qty:1 }],
+  },
+  'l-plate-w': {
+    label:'L형플레이트세트 (화이트)',
+    speedHome: false,
+    items:[
+      { code:'3T56S000004', name:'공용/부속/플랜지너트(M4)_소/N',  spec:'-', qty:5 },
+      { code:'3A05C95952',  name:'공용/부속/L형 플레이트/W',     spec:'-', qty:2 },
+      { code:'2A01S4104',   name:'공용/부속/평두머리볼트(M4)_소/N', spec:'-', qty:5 },
+    ],
+  },
+  'l-plate-b': {
+    label:'L형플레이트세트 (블랙)',
+    speedHome: false,
+    items:[
+      { code:'3T56S000004', name:'공용/부속/플랜지너트(M4)_소/N',  spec:'-', qty:5 },
+      { code:'3A05B95952',  name:'공용/부속/L형 플레이트/B',     spec:'-', qty:2 },
+      { code:'2A01S4104',   name:'공용/부속/평두머리볼트(M4)_소/N', spec:'-', qty:5 },
+    ],
+  },
+  'level-home-6': {
+    label:'소형조절좌세트 6mm (홈던트/H하우스)',
+    speedHome: true,
+    items:[
+      { code:'3T56S000007', name:'공용/부속/조절좌(건조기+소형조절좌공용)/N', spec:'6mm', qty:4 },
+      { code:'2S56S036023', name:'공용/부속/소형조절좌용브라켓/N',           spec:'-',   qty:4 },
+    ],
+  },
+  'level-speed-6': {
+    label:'소형조절좌세트 6mm (스피드랙)',
+    speedHome: true,
+    items:[
+      { code:'3T56S000007', name:'공용/부속/조절좌(건조기+소형조절좌공용)/N', spec:'6mm', qty:4 },
+      { code:'2S56S036023', name:'공용/부속/소형조절좌용브라켓/N',           spec:'-',   qty:4 },
+      { code:'2S56S000010', name:'공용/부속/플랜지너트(M6)_대/N',           spec:'-',   qty:10 },
+      { code:'2S56S000810', name:'공용/부속/평두머리볼트(M6)_대/N',         spec:'-',   qty:10 },
+    ],
+  },
+  'level-speed-12': {
+    label:'조절좌 12mm (스피드랙)',
+    speedHome: true,
+    items:[
+      { code:'2S56CF00003', name:'스피드랙/부속/조절좌/N', spec:'12mm', qty:1 },
+    ],
+  },
+  'level-speed-bracket': {
+    label:'조절좌브라켓세트 (스피드랙)',
+    speedHome: true,
+    items:[
+      { code:'2S56S036023', name:'공용/부속/소형조절좌용브라켓/N',   spec:'-', qty:1 },
+      { code:'2S56S000010', name:'공용/부속/플랜지너트(M6)_대/N',   spec:'-', qty:2 },
+      { code:'2S56S000810', name:'공용/부속/평두머리볼트(M6)_대/N', spec:'-', qty:2 },
+    ],
+  },
+};
+
+function updateAccOptions() {
+  const sel = document.getElementById('acc-select');
+  const isLightMedium = (currentType === '경량랙' || currentType === '중량랙');
+  const isSpeed  = currentType === '스피드랙';
+  const isHome   = currentType === '홈던트';
+
+  sel.querySelectorAll('option').forEach(opt => {
+    if (!opt.value) return;
+    const v = opt.value;
+    if (isLightMedium) {
+      opt.style.display = (v === 'hammer') ? '' : 'none';
+    } else if (isSpeed) {
+      opt.style.display = (v.startsWith('curtain-home') || v.startsWith('clip-home') || v.startsWith('mesh-home') || v === 'level-home-6') ? 'none' : '';
+    } else if (isHome) {
+      opt.style.display = (v.startsWith('curtain-speed') || v.startsWith('clip-speed') || v.startsWith('mesh-speed') || v.startsWith('level-speed')) ? 'none' : '';
+    } else {
+      opt.style.display = '';
+    }
+  });
+
+  const cur = sel.value;
+  if (cur) {
+    const hidden = sel.querySelector(`option[value="${cur}"]`)?.style.display === 'none';
+    if (hidden) {
+      sel.value = '';
+      document.getElementById('acc-preview').textContent = '';
+      document.getElementById('field-acc-spec1').classList.add('hidden');
+    }
+  }
+}
+
+// 랙 종류가 바뀌면 기존 랙 항목 초기화 후 추가
+function clearRackEntriesIfTypeChanged(newType) {
+  const rackTypes = ['경량랙','중량랙','스피드랙','홈던트'];
+  const existingRack = entries.find(e => rackTypes.includes(e.rackType));
+  if (existingRack && existingRack.rackType !== newType) {
+    if (!confirm(`기존 ${existingRack.rackType} 항목을 초기화하고 ${newType}을(를) 추가할까요?`)) return false;
+    entries = entries.filter(e => !rackTypes.includes(e.rackType));
+  }
+  return true;
+}
+
+function onAccSelect() {
+  const key = document.getElementById('acc-select').value;
+  const preview = document.getElementById('acc-preview');
+  const f1 = document.getElementById('field-acc-spec1');
+  f1.classList.add('hidden');
+  if (!key) { preview.textContent = ''; return; }
+
+  if (CURTAIN_DB[key] || MESH_DB[key]) {
+    const c = CURTAIN_DB[key] || MESH_DB[key];
+    document.getElementById('acc-spec1').innerHTML =
+      c.specs.map(s => `<option value="${s.key}">${s.label}</option>`).join('');
+    f1.classList.remove('hidden');
+    onAccSpecChange();
+    return;
+  }
+
+  const p = ACC_PARTS[key];
+  const isSet = p.items.length > 1;
+  preview.textContent = isSet
+    ? `[세트] ${p.items.map(i => `${i.name.split('/').pop()} ×${i.qty}`).join('  /  ')}`
+    : `품번: ${p.items[0].code}${p.speedHome ? '  ※ 스피드랙·홈던트 적용 대상' : ''}`;
+  preview.style.color = 'var(--text2)';
+}
+
+function onAccSpecChange() {
+  const key = document.getElementById('acc-select').value;
+  const preview = document.getElementById('acc-preview');
+  if (!CURTAIN_DB[key]) return;
+  const c = CURTAIN_DB[key];
+  const specKey = document.getElementById('acc-spec1').value;
+  const spec = c.specs.find(s => s.key === specKey);
+  if (spec) {
+    preview.textContent = `품번: ${spec.code}`;
+    preview.style.color = 'var(--text2)';
+  }
+}
+
+function addAccessory() {
+  const key = document.getElementById('acc-select').value;
+  const qty = parseInt(document.getElementById('acc-qty').value);
+  const preview = document.getElementById('acc-preview');
+  if (!key || !qty || qty < 1) return;
+
+  // 경량/중량랙만 있을 때 망치 외 추가 차단
+  const hasOnlyLightMedium = entries.some(e => e.rackType === '경량랙' || e.rackType === '중량랙')
+    && !entries.some(e => e.rackType === '스피드랙' || e.rackType === '홈던트');
+  if (hasOnlyLightMedium && key !== 'hammer') {
+    preview.textContent = '⚠ 경량랙·중량랙에는 망치만 추가할 수 있습니다.';
+    preview.style.color = 'var(--danger)';
+    return;
+  }
+
+  if (CURTAIN_DB[key] || MESH_DB[key]) {
+    const c = CURTAIN_DB[key] || MESH_DB[key];
+    const specKey = document.getElementById('acc-spec1').value;
+    const spec = c.specs.find(s => s.key === specKey);
+    if (!spec) return;
+    // 하위 품목만 추가 (세트코드 자체는 부품 목록에 넣지 않음)
+    if (spec.items) {
+      spec.items.forEach(item => {
+        entries.push({
+          id: entryId++, rackType: '부속품',
+          code: item.code, name: item.name, spec: item.spec,
+          label: item.name, qty: (item.qty || 1) * qty, isHammer: false,
+        });
+      });
+    }
+    preview.textContent = `${c.name} (${spec.label}) ${qty}개 추가됨`;
+    preview.style.color = 'var(--accent2)';
+    renderAll();
+    return;
+  }
+
+  const p = ACC_PARTS[key];
+  p.items.forEach(item => {
+    entries.push({
+      id: entryId++, rackType: '부속품',
+      code: item.code, name: item.name, spec: item.spec,
+      label: `${p.label} (${item.name.split('/').pop()})`,
+      qty: item.qty * qty, isHammer: item.code === '2S560CH0248',
+    });
+  });
+  preview.textContent = `${p.label} ${qty}${p.items.length > 1 ? '세트' : '개'} 추가됨`;
+  preview.style.color = 'var(--accent2)';
+  renderAll();
+}
+
+function addMediumRack() {
+  if (!clearRackEntriesIfTypeChanged('중량랙')) return;
+  const division = document.getElementById('m-division').value;
+  const height   = parseInt(document.getElementById('m-height').value);
+  const width    = parseInt(document.getElementById('m-width').value);
+  const depth    = parseInt(document.getElementById('m-depth').value);
+  const shelves  = parseInt(document.getElementById('m-shelves').value);
+  const qty      = parseInt(document.getElementById('m-qty').value);
+  const errEl    = document.getElementById('errorMsg');
+  const shelfKey = `${width}*${depth}`;
+  if (!MEDIUM_PARTS.기둥[height] || !MEDIUM_PARTS.전면빔[width] ||
+      !MEDIUM_PARTS.상부받침[depth] || !MEDIUM_PARTS.선반받침[depth] ||
+      !MEDIUM_PARTS.선반[shelfKey]) {
+    errEl.classList.add('show'); return;
+  }
+  errEl.classList.remove('show');
+  entries.push({id:entryId++, rackType:'중량랙', division, height, width, depth, shelves, qty});
+  renderAll();
+}
+
+function addLightRack() {
+  if (!clearRackEntriesIfTypeChanged('경량랙')) return;
+  const division=document.getElementById('l-division').value;
+  const height=parseInt(document.getElementById('l-height').value);
+  const width=parseInt(document.getElementById('l-width').value);
+  const depth=parseInt(document.getElementById('l-depth').value);
+  const shelves=parseInt(document.getElementById('l-shelves').value);
+  const qty=parseInt(document.getElementById('l-qty').value);
+  const errEl=document.getElementById('errorMsg');
+  if (!LIGHT_PARTS.기둥[height]||!LIGHT_PARTS.전면빔[width]||!LIGHT_PARTS.공용받침[depth]||!LIGHT_PARTS.선반[`${width}*${depth}`]) {
+    errEl.classList.add('show'); return;
+  }
+  errEl.classList.remove('show');
+  entries.push({id:entryId++,rackType:'경량랙',division,height,width,depth,shelves,qty});
+  renderAll();
+}
+
+function addSpeedRack() {
+  if (!clearRackEntriesIfTypeChanged('스피드랙')) return;
+  const division    = document.getElementById('s-division').value;
+  const color       = document.getElementById('s-color').value;
+  const height      = parseInt(document.getElementById('s-height').value);
+  const width       = parseInt(document.getElementById('s-width').value);
+  const shelves     = parseInt(document.getElementById('s-shelves').value);
+  const qty         = parseInt(document.getElementById('s-qty').value);
+  const plywoodThick= parseInt(document.getElementById('s-plywood').value);
+  const errEl       = document.getElementById('errorMsg');
+
+  if (!SPEED_기둥[color][height] || !SPEED_받침[color][width]) { errEl.classList.add('show'); return; }
+
+  if (division === '독립형') {
+    const depth = parseInt(document.getElementById('s-depth').value);
+    if (!depth || !SPEED_받침[color][depth]) { errEl.classList.add('show'); return; }
+    const pCode = PLYWOOD[plywoodThick]?.[`${width}*${depth}`];
+    if (!pCode) { errEl.classList.add('show'); return; }
+    errEl.classList.remove('show');
+    entries.push({id:entryId++,rackType:'스피드랙',division,color,height,width,depth,shelves,qty,plywoodThick,plywoodDepth:depth,plywoodCode:pCode});
+
+  } else if (division === '연결형') {
+    const connDepth = parseInt(document.getElementById('s-conn-depth').value);
+    if (!connDepth || !SPEED_연결받침[color][connDepth]) { errEl.classList.add('show'); return; }
+    const pCode = PLYWOOD[plywoodThick]?.[`${width}*${connDepth}`];
+    if (!pCode) { errEl.classList.add('show'); return; }
+    errEl.classList.remove('show');
+    entries.push({id:entryId++,rackType:'스피드랙',division,color,height,width,connDepth,shelves,qty,plywoodThick,plywoodDepth:connDepth,plywoodCode:pCode});
+
+  } else {
+    // 행거형
+    const hangerDepth   = parseInt(document.getElementById('s-depth').value);
+    const hangerShelves = parseInt(document.getElementById('s-hanger-shelves').value);
+    if (!hangerDepth || !SPEED_받침[color][hangerDepth]) { errEl.classList.add('show'); return; }
+    if (!hangerShelves || hangerShelves >= shelves) { errEl.classList.add('show'); return; }
+    if (!SPEED_행거봉[width]) { errEl.classList.add('show'); return; }
+    const pCode = PLYWOOD[plywoodThick]?.[`${width}*${hangerDepth}`];
+    if (!pCode) { errEl.classList.add('show'); return; }
+    errEl.classList.remove('show');
+    entries.push({id:entryId++,rackType:'스피드랙',division,color,height,width,depth:hangerDepth,hangerShelves,shelves,qty,plywoodThick,plywoodDepth:hangerDepth,plywoodCode:pCode});
+  }
+  renderAll();
+}
+
+// ════════════════════════════════════════════════════════
+// 렌더링
+// ════════════════════════════════════════════════════════
+function renderAll() {
+  const has=entries.length>0;
+  document.getElementById('entryCard').style.display=has?'':'none';
+  document.getElementById('resultCard').style.display=has?'':'none';
+  document.getElementById('emptyState').style.display=has?'none':'';
+  renderEntryList(); renderResult(); updateAccOptions(); updateSaveCard();
+}
+
+function entryLabel(e) {
+  if (e.rackType==='경량랙') return `${e.height}H × ${e.width}W × ${e.depth}D  /  ${e.shelves}단`;
+  if (e.rackType==='중량랙') return `${e.height}H × ${e.width}W × ${e.depth}D  /  ${e.shelves}단`;
+  if (e.rackType==='부속품') return e.label || e.name;
+  if (e.rackType==='스피드랙' || e.rackType==='홈던트') {
+    const cl = e.color==='W'?'화이트':'블랙';
+    const pw = `  /  합판${e.plywoodThick}T(${e.width}×${e.plywoodDepth})`;
+    if (e.division==='독립형')
+      return `${cl}  /  ${e.height}H  /  가로${e.width} × 세로${e.depth}  /  ${e.shelves}단${pw}`;
+    if (e.division==='연결형')
+      return `${cl}  /  ${e.height}H  /  가로${e.width}  /  연결받침${e.connDepth}  /  ${e.shelves}단${pw}`;
+    return `${cl}  /  ${e.height}H  /  가로${e.width} × 세로${e.depth}  /  ${e.shelves}단(행거${e.hangerShelves}단)${pw}`;
+  }
+  return '';
+}
+
+function renderEntryList() {
+  document.getElementById('entryList').innerHTML = entries.map(e => {
+    let cls='entry-badge', txt='';
+    if (e.rackType==='경량랙') {
+      cls += e.division==='연결형' ? ' connected' : '';
+      txt = `경량 ${e.division}`;
+    } else if (e.rackType==='중량랙') {
+      cls += e.division==='연결형' ? ' medium-conn' : ' medium';
+      txt = `중량 ${e.division}`;
+    } else if (e.rackType==='부속품') {
+      cls += ' acc';
+      txt = '부속품';
+    } else if (e.rackType==='스피드랙') {
+      if      (e.division==='독립형') cls += ' speed';
+      else if (e.division==='연결형') cls += ' speed-conn';
+      else                            cls += ' speed-hanger';
+      txt = `스피드 ${e.division}`;
+    } else {
+      if      (e.division==='독립형') cls += ' homedent';
+      else if (e.division==='연결형') cls += ' homedent-conn';
+      else                            cls += ' homedent-hang';
+      txt = `홈던트 ${e.division}`;
+    }
+    const qtyLabel = e.rackType==='부속품' ? `${e.qty}개` : `${e.qty}대`;
+    return `<div class="entry-item">
+      <span class="${cls}">${txt}</span>
+      <span class="entry-spec">${entryLabel(e)}</span>
+      <span class="entry-qty">${qtyLabel}</span>
+      <div class="entry-delete"><button class="btn btn-danger" onclick="removeEntry(${e.id})">삭제</button></div>
+    </div>`;
+  }).join('');
+}
+
+function removeEntry(id) { entries=entries.filter(e=>e.id!==id); renderAll(); }
+function clearAll() { entries=[]; qtyOverrides={}; renderAll(); }
+
+// ── 부품 목록 수량 수동 수정 ──
+let qtyOverrides = {};
+function getFinalRows() {
+  const { rows, sB, hB, hasS, hasH } = calcParts();
+  rows.forEach(r => { if (!r.isHeader && qtyOverrides[r.code] != null) r.qty = qtyOverrides[r.code]; });
+  return { rows, sB, hB, hasS, hasH };
+}
+function updateQty(code, val) {
+  const n = Math.max(0, parseInt(val) || 0);
+  qtyOverrides[code] = n;
+  renderResult();
+}
+
+// ════════════════════════════════════════════════════════
+// 계산
+// ════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// 단품 DB — { code, name, spec, rack: ['경량랙'|'중량랙'|'스피드랙'|'홈던트'] }
+// ════════════════════════════════════════════════════════
+const SINGLE_PARTS = (() => {
+  const parts = [];
+  const add = (code, name, spec, rack, cat) => parts.push({code, name, spec, rack, cat});
+
+  // 경량랙
+  Object.values(LIGHT_PARTS.기둥).forEach(p => add(p.code, p.name, p.spec, ['경량랙'], '기둥'));
+  Object.values(LIGHT_PARTS.전면빔).forEach(p => add(p.code, p.name, p.spec, ['경량랙'], '전면빔'));
+  Object.values(LIGHT_PARTS.공용받침).forEach(p => add(p.code, p.name, p.spec, ['경량랙'], '공용받침'));
+  Object.values(LIGHT_PARTS.선반).forEach(p => add(p.code, p.name, p.spec, ['경량랙'], '선반'));
+  add(LIGHT_PARTS.안전좌.code, LIGHT_PARTS.안전좌.name, LIGHT_PARTS.안전좌.spec, ['경량랙'], '안전좌');
+  add(LIGHT_PARTS.안전핀.code, LIGHT_PARTS.안전핀.name, LIGHT_PARTS.안전핀.spec, ['경량랙','중량랙'], '안전핀');
+
+  // 중량랙
+  Object.values(MEDIUM_PARTS.기둥).forEach(p => add(p.code, p.name, p.spec, ['중량랙'], '기둥'));
+  Object.values(MEDIUM_PARTS.전면빔).forEach(p => add(p.code, p.name, p.spec, ['중량랙'], '전면빔'));
+  Object.values(MEDIUM_PARTS.상부받침).forEach(p => add(p.code, p.name, p.spec, ['중량랙'], '상부받침'));
+  Object.values(MEDIUM_PARTS.선반받침).forEach(p => add(p.code, p.name, p.spec, ['중량랙'], '선반받침'));
+  Object.values(MEDIUM_PARTS.선반).forEach(p => add(p.code, p.name, p.spec, ['중량랙'], '선반'));
+  add(MEDIUM_PARTS.안전좌.code, MEDIUM_PARTS.안전좌.name, MEDIUM_PARTS.안전좌.spec, ['중량랙'], '안전좌');
+
+  // 스피드랙 기둥
+  ['W','B'].forEach(c => Object.entries(SPEED_기둥[c]).forEach(([spec, code]) =>
+    add(code, `스피드랙/160/기둥/${c==='W'?'화이트':'블랙'}`, spec, ['스피드랙'], '기둥')
+  ));
+  // 스피드랙 받침
+  ['W','B'].forEach(c => Object.entries(SPEED_받침[c]).forEach(([spec, code]) =>
+    add(code, `스피드랙/160/받침/${c==='W'?'화이트':'블랙'}`, spec, ['스피드랙'], '받침')
+  ));
+  // 스피드랙 연결받침
+  ['W','B'].forEach(c => Object.entries(SPEED_연결받침[c]).forEach(([spec, code]) =>
+    add(code, `스피드랙/160/연결받침/${c==='W'?'화이트':'블랙'}`, spec, ['스피드랙'], '연결받침')
+  ));
+  // 스피드랙 행거받침
+  ['W','B'].forEach(c => Object.entries(SPEED_행거받침[c]).forEach(([spec, hr]) => {
+    if (hr.single) add(hr.single, `스피드랙/160/행거받침/${c==='W'?'화이트':'블랙'}`, spec, ['스피드랙'], '행거받침');
+    else { add(hr.left, `스피드랙/160/행거받침(좌)/${c==='W'?'화이트':'블랙'}`, `${spec}(좌)`, ['스피드랙'], '행거받침(좌)'); add(hr.right, `스피드랙/160/행거받침(우)/${c==='W'?'화이트':'블랙'}`, `${spec}(우)`, ['스피드랙'], '행거받침(우)'); }
+  }));
+  // 스피드랙 안전좌
+  add('5S56W110001', '스피드랙/부속/안전좌/화이트', '-', ['스피드랙'], '안전좌');
+  add('5S56B110001', '스피드랙/부속/안전좌/블랙',   '-', ['스피드랙'], '안전좌');
+
+  // 홈던트 기둥
+  ['W','B'].forEach(c => Object.entries(HOMEDENT_기둥[c]).forEach(([spec, code]) =>
+    add(code, `홈던트/기둥/${c==='W'?'화이트':'블랙'}`, spec, ['홈던트'], '기둥')
+  ));
+  // 홈던트 받침
+  ['W','B'].forEach(c => Object.entries(HOMEDENT_받침[c]).forEach(([spec, code]) =>
+    add(code, `홈던트/받침/${c==='W'?'화이트':'블랙'}`, spec, ['홈던트'], '받침')
+  ));
+  // 홈던트 행거받침
+  ['W','B'].forEach(c => Object.entries(HOMEDENT_행거받침[c]).forEach(([spec, hr]) => {
+    if (hr.single) add(hr.single, `홈던트/행거받침/${c==='W'?'화이트':'블랙'}`, spec, ['홈던트'], '행거받침');
+    else { add(hr.left, `홈던트/행거받침(좌)/${c==='W'?'화이트':'블랙'}`, `${spec}(좌)`, ['홈던트'], '행거받침(좌)'); add(hr.right, `홈던트/행거받침(우)/${c==='W'?'화이트':'블랙'}`, `${spec}(우)`, ['홈던트'], '행거받침(우)'); }
+  }));
+  // 홈던트 브라켓, 안전좌
+  add(HOMEDENT_브라켓.W, '홈던트/부속/기둥연결브라켓/화이트', '-', ['홈던트'], '기둥연결브라켓');
+  add(HOMEDENT_브라켓.B, '홈던트/부속/기둥연결브라켓/블랙',   '-', ['홈던트'], '기둥연결브라켓');
+  add(HOMEDENT_안전좌.W, '홈던트/부속/안전좌/화이트', '-', ['홈던트'], '안전좌');
+  add(HOMEDENT_안전좌.B, '홈던트/부속/안전좌/블랙',   '-', ['홈던트'], '안전좌');
+
+  // 행거봉 (공용 → 스피드랙+홈던트)
+  Object.values(SPEED_행거봉).forEach(p => add(p.code, p.name, p.spec, ['스피드랙','홈던트'], '행거봉'));
+
+  // 보강대 (공용 → 스피드랙+홈던트)
+  const BOGANG = [
+    {code:'4S23B300030',name:'공용/120/보강대/B',spec:'300'},{code:'4S23B300040',name:'공용/120/보강대/B',spec:'400'},
+    {code:'4S23B300045',name:'공용/120/보강대/B',spec:'450'},{code:'4S23B300050',name:'공용/120/보강대/B',spec:'500'},
+    {code:'4S23B300060',name:'공용/120/보강대/B',spec:'600'},{code:'4S23B300070',name:'공용/120/보강대/B',spec:'700'},
+    {code:'4S23B300080',name:'공용/120/보강대/B',spec:'800'},{code:'4S23B300090',name:'공용/120/보강대/B',spec:'900'},
+    {code:'4S23N300030',name:'공용/120/보강대/N',spec:'300'},{code:'4S23N300040',name:'공용/120/보강대/N',spec:'400'},
+    {code:'4S23N300045',name:'공용/120/보강대/N',spec:'450'},{code:'4S23N300050',name:'공용/120/보강대/N',spec:'500'},
+    {code:'4S23N300060',name:'공용/120/보강대/N',spec:'600'},{code:'4S23N300070',name:'공용/120/보강대/N',spec:'700'},
+    {code:'4S23N300080',name:'공용/120/보강대/N',spec:'800'},{code:'4S23N300090',name:'공용/120/보강대/N',spec:'900'},
+    {code:'4S23W300030',name:'공용/120/보강대/W',spec:'300'},{code:'4S23W300040',name:'공용/120/보강대/W',spec:'400'},
+    {code:'4S23W300045',name:'공용/120/보강대/W',spec:'450'},{code:'4S23W300050',name:'공용/120/보강대/W',spec:'500'},
+    {code:'4S23W300060',name:'공용/120/보강대/W',spec:'600'},{code:'4S23W300070',name:'공용/120/보강대/W',spec:'700'},
+    {code:'4S23W300080',name:'공용/120/보강대/W',spec:'800'},{code:'4S23W300090',name:'공용/120/보강대/W',spec:'900'},
+  ];
+  BOGANG.forEach(p => add(p.code, p.name, p.spec, ['스피드랙','홈던트'], '보강대'));
+
+  // ACC_PARTS 단품
+  Object.entries(ACC_PARTS).forEach(([key, p]) => {
+    if (p.items.length === 1) {
+      const item = p.items[0];
+      const rack = item.name.includes('스피드랙') ? ['스피드랙'] :
+                   item.name.includes('홈던트')   ? ['홈던트']   :
+                   item.name.includes('경량랙')   ? ['경량랙']   :
+                   item.name.includes('중량랙')   ? ['중량랙']   : ['스피드랙','홈던트'];
+      add(item.code, item.name, item.spec, rack, key === 'hammer' ? '우레탄망치' : '기타부속');
+    }
+  });
+
+  // 합판 (공용 → 스피드랙+홈던트)
+  [9, 12].forEach(t => {
+    Object.entries(PLYWOOD[t]).forEach(([key, code]) => {
+      add(code, '합판', `${key}*${t}T`, ['스피드랙','홈던트'], '합판');
+    });
+  });
+
+  // 중복 제거 (품번 기준)
+  const seen = new Set();
+  return parts.filter(p => { if (seen.has(p.code)) return false; seen.add(p.code); return true; });
+})();
+
+// 랙 종류별 카테고리 순서
+function categoryOrderFor(type) {
+  if (type === '경량랙') return LIGHT_ORDER;
+  if (type === '중량랙') return MEDIUM_ORDER;
+  if (type === '스피드랙') return SPEED_ORDER;
+  if (type === '홈던트') return HOMEDENT_ORDER;
+  return [];
+}
+
+// 단품 추가 탭별 허용 rack 목록
+function allowedRacks() {
+  if (currentType === '경량랙') return ['경량랙'];
+  if (currentType === '중량랙') return ['중량랙'];
+  if (currentType === '스피드랙') return ['스피드랙'];
+  if (currentType === '홈던트') return ['홈던트'];
+  return ['경량랙','중량랙','스피드랙','홈던트'];
+}
+
+function populateSingleCatSelect() {
+  const catSel = document.getElementById('single-cat');
+  const allowed = allowedRacks();
+  const order = categoryOrderFor(currentType);
+  const available = SINGLE_PARTS.filter(p => p.rack.some(r => allowed.includes(r)));
+  // 카테고리 순서는 SPEED_ORDER 등 기준, 그 안에 없는 카테고리는 뒤에 추가
+  const cats = [];
+  order.forEach(c => { if (available.some(p => p.cat === c) && !cats.includes(c)) cats.push(c); });
+  available.forEach(p => { if (!cats.includes(p.cat)) cats.push(p.cat); });
+
+  const prevCat = catSel.value;
+  catSel.innerHTML = '<option value="">-- 종류 선택 --</option>' +
+    cats.map(c => `<option value="${c}">${c}</option>`).join('');
+  if (cats.includes(prevCat)) catSel.value = prevCat;
+  onSingleCatChange();
+}
+
+function onSingleCatChange() {
+  const cat = document.getElementById('single-cat').value;
+  const sel = document.getElementById('single-select');
+  const preview = document.getElementById('single-preview');
+  preview.textContent = '';
+  const allowed = allowedRacks();
+  if (!cat) { sel.innerHTML = '<option value="">-- 종류를 먼저 선택하세요 --</option>'; sel._filtered = []; return; }
+  const filtered = SINGLE_PARTS.filter(p => p.cat === cat && p.rack.some(r => allowed.includes(r)));
+  sel.innerHTML = '<option value="">-- 선택 (' + filtered.length + '개) --</option>' +
+    filtered.map((p,i) => `<option value="${i}">${p.name} / ${p.spec} (${p.code})</option>`).join('');
+  sel._filtered = filtered;
+}
+
+function onSingleSelect() {
+  const sel = document.getElementById('single-select');
+  const preview = document.getElementById('single-preview');
+  const idx = sel.value;
+  if (!idx || !sel._filtered) { preview.textContent = ''; return; }
+  const p = sel._filtered[parseInt(idx)];
+  preview.textContent = `품번: ${p.code}  /  ${p.name}  /  규격: ${p.spec}`;
+  preview.style.color = 'var(--text2)';
+}
+
+function addSinglePart() {
+  const sel = document.getElementById('single-select');
+  const qty = parseInt(document.getElementById('single-qty').value);
+  const preview = document.getElementById('single-preview');
+  const idx = sel.value;
+  if (!idx || !sel._filtered || !qty || qty < 1) return;
+  const p = sel._filtered[parseInt(idx)];
+  entries.push({
+    id: entryId++, rackType: '부속품',
+    code: p.code, name: p.name, spec: p.spec,
+    label: `${p.name} (${p.spec})`, qty, isHammer: false,
+  });
+  preview.textContent = `${p.name} ${qty}개 추가됨`;
+  preview.style.color = 'var(--accent2)';
+  renderAll();
+}
+
+const LIGHT_ORDER=['기둥','전면빔','공용받침','안전좌','안전핀','우레탄망치','기타부속','선반'];
+const MEDIUM_ORDER=['기둥','전면빔','상부받침','선반받침','안전좌','안전핀','우레탄망치','기타부속','선반'];
+// 순서: 기둥 → 받침류 → 안전좌 → 나머지부속(행거받침,행거봉) → 합판
+const SPEED_ORDER=['기둥','받침','연결받침','행거받침(좌)','행거받침(우)','행거받침','보강대','안전좌','우레탄망치','기타부속','행거봉','합판'];
+
+// 합판 품번별 박스당 수량
+const PLYWOOD_BOX = {
+  '3C24A015030':6,'3C24A015040':5,'3C24A015050':5,'3C24A015060':4,'3C24A015070':3,'3C24A015080':3,'3C24A015090':3,
+  '3C24A012060':5,
+  '3C34A015030':5,'3C34A015040':4,'3C34A015050':3,'3C34A015060':3,'3C34A015070':2,'3C34A015080':2,'3C34A015090':2,
+  '3C24A006030':6,'3C24A007030':6,'3C24A008030':6,'3C24A009030':6,'3C24A010030':6,'3C24A011030':6,'3C24A012030':6,
+  '3C24A006040':6,'3C24A007040':6,'3C24A008040':6,'3C24A009040':6,'3C24A010040':6,'3C24A012040':6,'3C24A011040':6,
+  '3C24A008050':6,'3C24A010050':6,'3C24A012050':5,'3C24A006050':6,'3C24A007050':6,'3C24A009050':6,'3C24A011050':6,
+  '3C24A008060':6,'3C24A006060':6,'3C24A007060':6,'3C24A009060':6,'3C24A010060':5,'3C24A011060':5,
+  '3C24A003030':6,'3C24A004030':6,'3C24A005030':6,'3C24A004040':6,'3C24A005040':6,'3C24a003030':6,'3C24a005030':6,
+  '3C24A004050':6,'3C24A005050':6,'3C24A005060':6,'3C24A004060':6,
+  '3C24A010070':5,'3C24A011070':5,'3C24A012070':4,'3C24A007070':6,'3C24A008070':5,'3C24A009070':5,
+  '3C24A008080':5,'3C24A009080':5,'3C24A010080':5,'3C24A011080':4,'3C24A012080':3,
+  '3C24A009090':5,'3C24A010090':5,'3C24A011090':4,'3C24A012090':3,
+  '3C34A003030':5,'3C34A004030':5,'3C34A005030':5,'3C34A007030':5,'3C34A008030':5,'3C34A009030':5,'3C34A010030':5,'3C34A011030':5,'3C34A012030':5,
+  '3C34A004040':5,'3C34A005040':5,'3C34A007040':5,'3C34A008040':5,'3C34A009040':5,'3C34A011040':5,'3C34A012040':5,'3C34A010040':5,
+  '3C34A005050':5,'3C34A008050':5,'3C34A009050':5,'3C34A011050':5,'3C34A012050':4,
+  '3C34A008060':5,'3C34A006030':5,'3C34A006040':5,'3C34A006050':5,'3C34A007050':5,'3C34A0100501':5,
+  '3C340a09060':5,'3C340a10060':4,'3C340a12060':3,'3C34A006060':5,'3C34A007060':5,'3C34A011060':4,
+  '3C340A09060':5,'3C340A10060':4,'3C340A12060':3,
+  '3C34A010070':4,'3C34A011070':3,'3C34A012070':3,'3C34A007070':5,'3C34A008070':5,'3C34A009070':4,
+  '3C34A008080':4,'3C34A009080':3,'3C34A010080':3,'3C34A011080':3,'3C34A012080':2,
+  '3C34A009090':3,'3C34A010090':3,'3C34A011090':2,'3C34A012090':2,
+};
+
+const HOMEDENT_ORDER=['기둥','받침','연결받침','행거받침(좌)','행거받침(우)','행거받침','보강대','안전좌','우레탄망치','기타부속','기둥연결브라켓','행거봉','합판'];
+
+function calcParts() {
+  const lB={}; LIGHT_ORDER.forEach(l=>lB[l]={});
+  const mB={}; MEDIUM_ORDER.forEach(l=>mB[l]={});
+  const sB={}; SPEED_ORDER.forEach(l=>sB[l]={});
+  const hB={}; HOMEDENT_ORDER.forEach(l=>hB[l]={});
+  const accB={}; // 미사용
+  const accOnlyB={}; // 랙 없이 부속만 있을 때
+  let hasL=false, hasM=false, hasS=false, hasH=false, hasAcc=false;
+
+  function add(buckets, label, part, qty) {
+    if (!part?.code) return;
+    if (!buckets[label][part.code]) buckets[label][part.code]={...part,qty:0};
+    buckets[label][part.code].qty += qty;
+  }
+
+  for (const e of entries) {
+    const mul = e.qty;
+
+    if (e.rackType==='경량랙') {
+      hasL = true;
+      const isIndep = e.division==='독립형';
+      add(lB,'기둥',     LIGHT_PARTS.기둥[e.height],                 (isIndep?4:2)*mul);
+      add(lB,'전면빔',   LIGHT_PARTS.전면빔[e.width],                 4*mul);
+      add(lB,'공용받침', LIGHT_PARTS.공용받침[e.depth],               e.shelves*2*mul);
+      add(lB,'안전좌',   LIGHT_PARTS.안전좌,                          (isIndep?4:2)*mul);
+      add(lB,'안전핀',   LIGHT_PARTS.안전핀,                          8*mul);
+      add(lB,'선반',     LIGHT_PARTS.선반[`${e.width}*${e.depth}`],   e.shelves*mul);
+
+    } else if (e.rackType==='중량랙') {
+      hasM = true;
+      const isIndep = e.division==='독립형';
+      const pile = isIndep ? 4 : 2;
+      add(mB,'기둥',    MEDIUM_PARTS.기둥[e.height],                  pile*mul);
+      add(mB,'전면빔',  MEDIUM_PARTS.전면빔[e.width],                  4*mul);
+      add(mB,'상부받침',MEDIUM_PARTS.상부받침[e.depth],                2*mul);
+      add(mB,'선반받침',MEDIUM_PARTS.선반받침[e.depth],                (e.shelves-1)*2*mul);
+      add(mB,'안전좌',  MEDIUM_PARTS.안전좌,                           pile*mul);
+      add(mB,'안전핀',  MEDIUM_PARTS.안전핀,                           8*mul);
+      add(mB,'선반',    MEDIUM_PARTS.선반[`${e.width}*${e.depth}`],    e.shelves*mul);
+
+    } else if (e.rackType==='스피드랙') {
+      hasS = true;
+      const cl   = e.color==='W' ? '화이트' : '블랙';
+      // 행거형도 독립형과 동일하게 기둥 4개
+      const pile = e.division==='연결형' ? 2 : 4;
+
+      // 기둥
+      const pc = SPEED_기둥[e.color][e.height];
+      if (pc) add(sB,'기둥',{code:pc,name:`스피드랙/160/기둥/${cl}`,spec:String(e.height)},pile*mul);
+
+      // 받침(가로) — 행거형은 (단수-행거단수)×2, 나머지는 단수×2
+      const wc = SPEED_받침[e.color][e.width];
+      const garo = e.shelves;
+      if (wc) add(sB,'받침',{code:wc,name:`스피드랙/160/받침/${cl}`,spec:String(e.width)},garo*2*mul);
+
+      if (e.division==='독립형') {
+        const dc = SPEED_받침[e.color][e.depth];
+        if (dc) add(sB,'받침',{code:dc,name:`스피드랙/160/받침/${cl}`,spec:String(e.depth)},e.shelves*2*mul);
+
+      } else if (e.division==='연결형') {
+        const cc = SPEED_연결받침[e.color][e.connDepth];
+        if (cc) add(sB,'연결받침',{code:cc,name:`스피드랙/160/연결받침/${cl}`,spec:String(e.connDepth)},e.shelves*mul);
+
+      } else {
+        // 행거형
+        // 일반 받침(세로): (단수 - 행거단수) × 2
+        const normalShelves = e.shelves - e.hangerShelves;
+        const dc = SPEED_받침[e.color][e.depth];
+        if (dc && normalShelves > 0) {
+          add(sB,'받침',{code:dc,name:`스피드랙/160/받침/${cl}`,spec:String(e.depth)},normalShelves*2*mul);
+        }
+
+        // 행거받침: 400은 좌/우 각 행거단수개, 500/600은 행거단수×2개
+        const hr = SPEED_행거받침[e.color][e.depth];
+        if (hr) {
+          if (hr.single) {
+            add(sB,'행거받침',{code:hr.single,name:`스피드랙/160/행거받침/${cl}`,spec:String(e.depth)},e.hangerShelves*2*mul);
+          } else {
+            add(sB,'행거받침(좌)',{code:hr.left, name:`스피드랙/160/행거받침(좌)/${cl}`,spec:'400(좌)'},e.hangerShelves*mul);
+            add(sB,'행거받침(우)',{code:hr.right,name:`스피드랙/160/행거받침(우)/${cl}`,spec:'400(우)'},e.hangerShelves*mul);
+          }
+        }
+
+        // 행거봉: 행거단수개
+        const hb = SPEED_행거봉[e.width];
+        if (hb) add(sB,'행거봉',{code:hb.code,name:hb.name,spec:hb.spec},e.hangerShelves*mul);
+      }
+
+      // 안전좌 — 기둥수×2
+      const saCode = e.color==='W' ? '5S56W110001' : '5S56B110001';
+      add(sB,'안전좌',{code:saCode,name:`스피드랙/부속/안전좌/${cl}`,spec:'-'},pile*2*mul);
+
+      // 합판 — 단수×대수
+      if (e.plywoodCode) {
+        add(sB,'합판',{code:e.plywoodCode,name:'합판',spec:`${e.width}*${e.plywoodDepth}*${e.plywoodThick}T`},e.shelves*mul);
+      }
+
+    } else if (e.rackType==='홈던트') {
+      hasH = true;
+      const cl   = e.color==='W' ? '화이트' : '블랙';
+      const pile = 4;
+
+      // 기둥: 단일 높이면 해당 기둥 4개, 조합이면 두 종류 각 4개 + 기둥연결브라켓 대수*4
+      if (e.isSingle) {
+        const c = HOMEDENT_기둥[e.color][e.height];
+        if (c) add(hB,'기둥',{code:c,name:`홈던트/기둥/${cl}`,spec:String(e.height)},pile*mul);
+      } else {
+        const combo = HOMEDENT_기둥조합[e.height];
+        if (combo) {
+          const [h1, h2] = combo;
+          const c1 = HOMEDENT_기둥[e.color][h1];
+          const c2 = HOMEDENT_기둥[e.color][h2];
+          if (h1 === h2) {
+            if (c1) add(hB,'기둥',{code:c1,name:`홈던트/기둥/${cl}`,spec:String(h1)},pile*2*mul);
+          } else {
+            if (c1) add(hB,'기둥',{code:c1,name:`홈던트/기둥/${cl}`,spec:String(h1)},pile*mul);
+            if (c2) add(hB,'기둥',{code:c2,name:`홈던트/기둥/${cl}`,spec:String(h2)},pile*mul);
+          }
+        }
+        const bCode = HOMEDENT_브라켓[e.color];
+        if (bCode) add(hB,'기둥연결브라켓',{code:bCode,name:`홈던트/부속/기둥연결브라켓/${cl}`,spec:'-'},4*mul);
+      }
+
+      // 받침(가로) — 단수×2
+      const wc = HOMEDENT_받침[e.color][e.width];
+      if (wc) add(hB,'받침',{code:wc,name:`홈던트/받침/${cl}`,spec:String(e.width)},e.shelves*2*mul);
+
+      if (e.division==='독립형') {
+        const dc = HOMEDENT_받침[e.color][e.depth];
+        if (dc) add(hB,'받침',{code:dc,name:`홈던트/받침/${cl}`,spec:String(e.depth)},e.shelves*2*mul);
+
+      } else {
+        // 행거형
+        const normalShelves = e.shelves - e.hangerShelves;
+        const dc = HOMEDENT_받침[e.color][e.depth];
+        if (dc && normalShelves > 0) {
+          add(hB,'받침',{code:dc,name:`홈던트/받침/${cl}`,spec:String(e.depth)},normalShelves*2*mul);
+        }
+        const hr = HOMEDENT_행거받침[e.color][e.depth];
+        if (hr) {
+          if (hr.single) {
+            add(hB,'행거받침',{code:hr.single,name:`홈던트/행거받침/${cl}`,spec:String(e.depth)},e.hangerShelves*2*mul);
+          } else {
+            add(hB,'행거받침(좌)',{code:hr.left, name:`홈던트/행거받침(좌)/${cl}`,spec:'400(좌)'},e.hangerShelves*mul);
+            add(hB,'행거받침(우)',{code:hr.right,name:`홈던트/행거받침(우)/${cl}`,spec:'400(우)'},e.hangerShelves*mul);
+          }
+        }
+        const hb = SPEED_행거봉[e.width];
+        if (hb) add(hB,'행거봉',{code:hb.code,name:hb.name,spec:hb.spec},e.hangerShelves*mul);
+      }
+
+      // 안전좌 — 기둥수×2
+      const saCode = HOMEDENT_안전좌[e.color];
+      if (saCode) add(hB,'안전좌',{code:saCode,name:`홈던트/부속/안전좌/${cl}`,spec:'-'},pile*2*mul);
+
+      // 합판 — 단수×대수
+      if (e.plywoodCode) {
+        add(hB,'합판',{code:e.plywoodCode,name:'합판',spec:`${e.width}*${e.plywoodDepth}*${e.plywoodThick}T`},e.shelves*mul);
+      }
+    } else if (e.rackType==='부속품') {
+      hasAcc = true;
+      // 두 번째 패스에서 처리 (랙 플래그 확정 후)
+    }
+  }
+
+  // 2nd pass: 부속품 처리 (랙 버킷 확정 후)
+  for (const e of entries) {
+    if (e.rackType !== '부속품') continue;
+    const HAMMER_CODE = '2S560CH0248';
+    const BOGANG_CODES = new Set(Object.keys(PLYWOOD).length ? [] : []); // 아래서 정의
+    const isBo = e.name.includes('보강대');
+    const isPlywood = e.name.includes('합판');
+    const slot = (e.code === HAMMER_CODE) ? '우레탄망치' : isBo ? '보강대' : isPlywood ? '합판' : '기타부속';
+    if (hasL) {
+      add(lB, slot, { code:e.code, name:e.name, spec:e.spec }, e.qty);
+    } else if (hasM) {
+      add(mB, slot, { code:e.code, name:e.name, spec:e.spec }, e.qty);
+    } else if (hasS) {
+      add(sB, slot, { code:e.code, name:e.name, spec:e.spec }, e.qty);
+    } else if (hasH) {
+      add(hB, slot, { code:e.code, name:e.name, spec:e.spec }, e.qty);
+    } else {
+      if (!accOnlyB[e.code]) accOnlyB[e.code] = { code:e.code, name:e.name, spec:e.spec, qty:0 };
+      accOnlyB[e.code].qty += e.qty;
+    }
+  }
+
+  // ── 랙 종류 상관없이 통일된 표시 순서 ──
+  const UNIFIED_ORDER = ['기둥','받침','안전좌','안전핀','우레탄망치','기타부속','합판'];
+  const SLOT_MAP = {
+    '기둥':'기둥',
+    '전면빔':'받침','공용받침':'받침','상부받침':'받침','선반받침':'받침','받침':'받침',
+    '연결받침':'받침','행거받침(좌)':'받침','행거받침(우)':'받침','행거받침':'받침','보강대':'받침',
+    '안전좌':'안전좌',
+    '안전핀':'안전핀',
+    '우레탄망치':'우레탄망치',
+    '기타부속':'기타부속','행거봉':'기타부속','기둥연결브라켓':'기타부속',
+    '선반':'합판','합판':'합판',
+  };
+
+  const rows=[];
+  function pushSection(header, buckets, order) {
+    rows.push({label:header, isHeader:true});
+    const optional=['연결받침','행거받침(좌)','행거받침(우)','행거받침','보강대','행거봉','기둥연결브라켓','우레탄망치','기타부속','합판'];
+    // 원래 랙별 카테고리들을 통일 슬롯 기준으로 재배치 (슬롯 내부는 원래 상대 순서 유지)
+    const bySlot = {}; UNIFIED_ORDER.forEach(s => bySlot[s]=[]);
+    order.forEach(cat => { const slot = SLOT_MAP[cat] || cat; (bySlot[slot] || (bySlot[slot]=[])).push(cat); });
+    UNIFIED_ORDER.forEach(slot => {
+      (bySlot[slot]||[]).forEach(label => {
+        const items = Object.values(buckets[label]||{});
+        if (!items.length && optional.includes(label)) return;
+        if (!items.length) rows.push({label,code:'-',name:'-',spec:'-',qty:0});
+        else items.forEach((item,i)=>rows.push({label:i===0?label:'',code:item.code,name:item.name,spec:item.spec,qty:item.qty}));
+      });
+    });
+  }
+  if (hasL) pushSection('── 경량랙 ──', lB, LIGHT_ORDER);
+  if (hasM) pushSection('── 중량랙 ──', mB, MEDIUM_ORDER);
+  if (hasH) pushSection('── 홈던트 ──', hB, HOMEDENT_ORDER);
+  if (hasS) pushSection('── 스피드랙 ──', sB, SPEED_ORDER);
+  // 랙 없이 부속만 있는 경우
+  if (hasAcc && !hasL && !hasM && !hasS && !hasH && Object.keys(accOnlyB).length) {
+    rows.push({label:'── 부속품 ──', isHeader:true});
+    Object.values(accOnlyB).forEach(item =>
+      rows.push({label:'부속', code:item.code, name:item.name, spec:item.spec, qty:item.qty})
+    );
+  }
+  return { rows, sB, hB, hasS, hasH };
+}
+
+function calcFreight(buckets, freightRadioName, frameLabels) {
+  const freightType = document.querySelector(`input[name="${freightRadioName}"]:checked`)?.value || '택배';
+  const FREIGHT_CODE_10K = '7Y990OO000004';
+  const FREIGHT_CODE_1K  = '7Y990OO000002';
+  const FREIGHT_CODE_PKG = '7Y990OO000003';
+
+  // 합판 박스 수
+  let plywoodBoxes = 0;
+  Object.values(buckets['합판']||{}).forEach(item => {
+    const perBox = PLYWOOD_BOX[item.code] || 1;
+    plywoodBoxes += Math.ceil(item.qty / perBox);
+  });
+
+  // 프레임 수
+  let frameCount = 0;
+  frameLabels.forEach(label => { Object.values(buckets[label]||{}).forEach(item => { frameCount += item.qty; }); });
+
+  if (freightType === '택배') {
+    const qty = plywoodBoxes + Math.ceil(frameCount / 30);
+    return { type:'택배', boxes:plywoodBoxes, frames:frameCount, items:[{ code:FREIGHT_CODE_PKG, qty }] };
+  } else if (freightType === '파렛') {
+    return { type:'파렛', boxes:plywoodBoxes, frames:frameCount, items:[{ code:FREIGHT_CODE_PKG, qty:10 }] };
+  } else {
+    const addrId = freightRadioName === 's-freight' ? 'freight-addr' : 'h-freight-addr';
+    const price = parseInt(document.getElementById(addrId).value) || 0;
+    const qty10k = Math.floor(price / 10000);
+    const qty1k  = Math.round((price % 10000) / 1000);
+    const items = [];
+    if (qty10k > 0) items.push({ code:FREIGHT_CODE_10K, qty:qty10k });
+    if (qty1k  > 0) items.push({ code:FREIGHT_CODE_1K,  qty:qty1k  });
+    return { type:'용차', boxes:plywoodBoxes, frames:frameCount, price, items };
+  }
+}
+
+function renderFreightSummary(sB, hB, hasS, hasH) {
+  const el = document.getElementById('freightSummary');
+  const parts = [];
+
+  const frameLabels = ['기둥','받침','연결받침','행거받침(좌)','행거받침(우)','행거받침','행거봉'];
+
+  if (hasS) {
+    const f = calcFreight(sB, 's-freight', frameLabels);
+    let detail, cost;
+    if (f.type === '택배') {
+      const totalBoxes = f.boxes + Math.ceil(f.frames/30);
+      detail = `합판 ${f.boxes}박스 + 프레임 ${f.frames}개(${Math.ceil(f.frames/30)}박스)`;
+      cost = `${totalBoxes}박스`;
+    } else if (f.type === '파렛') {
+      detail = '파렛 운송';
+      cost = '60,000원';
+    } else {
+      detail = '용차 운송';
+      cost = f.price ? `${f.price.toLocaleString()}원` : '지역 미선택';
+    }
+    parts.push(`<div style="display:flex;flex-direction:column;gap:4px;padding-right:20px;border-right:1px solid var(--border)">
+      <span style="font-size:0.72rem;font-weight:700;color:var(--text2);letter-spacing:0.06em">스피드랙 운임 (${f.type})</span>
+      <span style="font-size:0.82rem;color:var(--text)">${detail}</span>
+      <span style="font-size:0.82rem;color:var(--accent2);font-weight:600">${cost}</span>
+    </div>`);
+  }
+
+  if (hasH) {
+    const f = calcFreight(hB, 'h-freight', frameLabels);
+    let detail, cost;
+    if (f.type === '택배') {
+      const totalBoxes = f.boxes + Math.ceil(f.frames/30);
+      detail = `합판 ${f.boxes}박스 + 프레임 ${f.frames}개(${Math.ceil(f.frames/30)}박스)`;
+      cost = `${totalBoxes}박스`;
+    } else if (f.type === '파렛') {
+      detail = '파렛 운송';
+      cost = '60,000원';
+    } else {
+      detail = '용차 운송';
+      cost = f.price ? `${f.price.toLocaleString()}원` : '지역 미선택';
+    }
+    parts.push(`<div style="display:flex;flex-direction:column;gap:4px">
+      <span style="font-size:0.72rem;font-weight:700;color:var(--text2);letter-spacing:0.06em">홈던트 운임 (${f.type})</span>
+      <span style="font-size:0.82rem;color:var(--text)">${detail}</span>
+      <span style="font-size:0.82rem;color:var(--accent2);font-weight:600">${cost}</span>
+    </div>`);
+  }
+
+  if (parts.length) {
+    el.style.display = 'flex';
+    el.innerHTML = `<div style="font-size:0.72rem;font-weight:700;color:var(--text2);letter-spacing:0.06em;width:100%;margin-bottom:8px">📦 예상 운임비</div>` + parts.join('');
+  } else {
+    el.style.display = 'none';
+    el.innerHTML = '';
+  }
+}
+
+function renderResult() {
+  const { rows, sB, hB, hasS, hasH } = getFinalRows();
+  document.getElementById('resultBody').innerHTML = rows.map(r => {
+    if (r.isHeader) return `<tr style="background:var(--surface2)"><td colspan="5" style="padding:8px 14px;font-size:0.72rem;font-weight:700;letter-spacing:0.1em;color:var(--text2);border-top:2px solid var(--border)">${r.label}</td></tr>`;
+    return `<tr><td class="td-label">${r.label}</td><td class="td-name">${r.name}</td><td class="td-code">${r.code}</td><td class="td-spec">${r.spec}</td><td class="td-qty">${r.qty>0?`<input type="number" min="0" value="${r.qty}" style="width:64px;text-align:right;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:3px 6px" onchange="updateQty('${r.code}', this.value)">`:'-'}</td></tr>`;
+  }).join('');
+  renderFreightSummary(sB, hB, hasS, hasH);
+}
+
+// ════════════════════════════════════════════════════════
+// 복사
+// ════════════════════════════════════════════════════════
+function copyModalField(field) {
+  const map = { phone: [window._modalPhone,'핸드폰'], zip: [window._modalZip,'우편번호'], addr: [window._modalAddr,'주소'], name: [window._modalName,'수취인명'], memo: [window._modalMemo,'메모'] };
+  const [val, label] = map[field] || ['',''];
+  if (!val) { showToast(`${label} 정보 없음`); return; }
+  doClipboard(val, `${label} 복사 완료!`);
+}
+function copyModalCol(col) {
+  const data = (window._modalParts||[]).filter(r=>!r.isHeader);
+  doClipboard(data.map(r=>col==='code'?r.code:(r.qty>0?r.qty:'')).join('\n'),col==='code'?'품번 복사 완료!':'수량 복사 완료!');
+}
+function copyCol(col) {
+  const { rows } = getFinalRows();
+  const data = rows.filter(r=>!r.isHeader);
+  doClipboard(data.map(r=>col==='code'?r.code:(r.qty>0?r.qty:'')).join('\n'),col==='code'?'품번 복사 완료!':'수량 복사 완료!');
+}
+function copyTable() {
+  const { rows } = getFinalRows();
+  const data = rows.filter(r=>!r.isHeader);
+  doClipboard('부품\t품명\t품번\t규격\t수량\n'+data.map(r=>`${r.label}\t${r.name}\t${r.code}\t${r.spec}\t${r.qty>0?r.qty:''}`).join('\n'),'전체 복사 완료! 엑셀에 붙여넣기 하세요.');
+}
+function doClipboard(text,msg) {
+  navigator.clipboard.writeText(text).then(()=>showToast(msg)).catch(()=>{
+    const ta=document.createElement('textarea');
+    ta.value=text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); document.body.removeChild(ta); showToast(msg);
+  });
+}
+function showToast(msg) {
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+
+// 초기 로드 시 세로 옵션 채우기
+window.addEventListener('load', () => { onSpeedFormChange(); onHomeDentFormChange(); });
+
+// ════════════════════════════════════════════════════════
+// SUPABASE 연동
+// ════════════════════════════════════════════════════════
+const SUPABASE_URL  = 'https://icajqgtrcsyfwzmettqu.supabase.co';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljYWpxZ3RyY3N5Znd6bWV0dHF1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNDY2NzcsImV4cCI6MjA5OTYyMjY3N30.Ks39qWFf4vxjmJnPn1bQaDaA500k5tu-WLXrhS_63Fw';
+const MASTER_EMAIL  = 'lsw0719@speedrack.kr';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let isMaster    = false;
+
+// ── 인증 탭 전환 ──
+function setAuthTab(tab) {
+  document.getElementById('authLoginForm').style.display  = tab==='login'  ? '' : 'none';
+  document.getElementById('authSignupForm').style.display = tab==='signup' ? '' : 'none';
+  document.querySelectorAll('.auth-tab button').forEach((b,i)=>b.classList.toggle('active', (i===0&&tab==='login')||(i===1&&tab==='signup')));
+}
+
+// ── 로그인 ──
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pw    = document.getElementById('loginPw').value;
+  const err   = document.getElementById('loginErr');
+  err.textContent = '';
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if (error) { err.textContent = '이메일 또는 비밀번호를 확인해주세요.'; return; }
+}
+
+// ── 회원가입 ──
+async function doSignup() {
+  const name  = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const pw    = document.getElementById('signupPw').value;
+  const err   = document.getElementById('signupErr');
+  err.textContent = '';
+  if (!name) { err.textContent = '이름을 입력해주세요.'; return; }
+  const { error } = await sb.auth.signUp({ email, password: pw, options: { data: { name } } });
+  if (error) { err.textContent = error.message; return; }
+  err.style.color = 'var(--accent2)';
+  err.textContent = '가입 완료! 이메일 인증 후 로그인해주세요.';
+}
+
+// ── 로그아웃 ──
+async function doLogout() {
+  await sb.auth.signOut();
+}
+
+// ── 탭 전환 ──
+function showTab(tab) {
+  document.getElementById('viewHome').style.display        = tab==='home'       ? '' : 'none';
+  document.getElementById('viewInput').style.display        = tab==='input'      ? '' : 'none';
+  document.getElementById('viewQuickEntry').style.display   = tab==='quickEntry' ? '' : 'none';
+  document.getElementById('viewSaved').style.display        = tab==='saved'      ? '' : 'none';
+  document.getElementById('viewByAccount').style.display    = tab==='byAccount'  ? '' : 'none';
+  document.getElementById('viewMembers').style.display      = tab==='members'    ? '' : 'none';
+  document.getElementById('tabHome').classList.toggle('active', tab==='home');
+  document.getElementById('tabInput').classList.toggle('active', tab==='input');
+  document.getElementById('tabQuickEntry').classList.toggle('active', tab==='quickEntry');
+  document.getElementById('tabSaved').classList.toggle('active', tab==='saved');
+  document.getElementById('tabByAccount').classList.toggle('active', tab==='byAccount');
+  document.getElementById('tabMembers').classList.toggle('active', tab==='members');
+  if (tab==='saved') loadSavedOrders();
+  if (tab==='byAccount') loadByAccount();
+  if (tab==='members') loadMembers();
+}
+
+// ── 세션 감지 ──
+sb.auth.onAuthStateChange(async (event, session) => {
+  if (session?.user) {
+    currentUser = session.user;
+    isMaster    = currentUser.email === MASTER_EMAIL;
+    document.getElementById('authWrap').style.display = 'none';
+    document.getElementById('appWrap').style.display  = '';
+    document.getElementById('userInfo').innerHTML =
+      `<strong>${currentUser.email}</strong>${isMaster ? ' <span style="color:var(--accent);font-size:0.7rem;font-weight:700">[마스터]</span>' : ''}`;
+    document.getElementById('tabByAccount').style.display = isMaster ? '' : 'none';
+    document.getElementById('tabMembers').style.display = isMaster ? '' : 'none';
+    document.getElementById('homeByAccountCard').style.display = isMaster ? '' : 'none';
+    document.getElementById('homeMembersCard').style.display = isMaster ? '' : 'none';
+    showTab('home');
+  } else {
+    currentUser = null;
+    isMaster    = false;
+    document.getElementById('authWrap').style.display = '';
+    document.getElementById('appWrap').style.display  = 'none';
+  }
+});
+
+// ── renderAll에 저장카드 표시 연동 ──
+function updateSaveCard() {
+  const has = entries.length > 0;
+  const sc  = document.getElementById('saveCard');
+  if (sc) sc.style.display = has && currentUser ? '' : 'none';
+}
+
+// ── 저장 ──
+async function saveOrder() {
+  if (!currentUser) return;
+  const { rows } = getFinalRows();
+  const parts = rows.filter(r => !r.isHeader);
+  const data = {
+    user_id:        currentUser.id,
+    recipient_name: document.getElementById('recipientName').value.trim(),
+    phone:          document.getElementById('recipientPhone').value.trim(),
+    zipcode:        document.getElementById('recipientZip').value.trim(),
+    address:        document.getElementById('recipientAddr').value.trim(),
+    freight_type:   document.getElementById('recipientFreight').value,
+    memo:           document.getElementById('orderMemo').value.trim(),
+    entries:        entries,
+    parts:          parts,
+  };
+  const { error } = await sb.from('orders').insert(data);
+  if (error) { showToast('저장 실패: ' + error.message); return; }
+  showToast('저장 완료!');
+  // 초기화
+  entries = []; qtyOverrides = {}; renderAll();
+  ['recipientName','recipientPhone','recipientZip','recipientAddr','orderMemo'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
+
+// ── 저장 목록 불러오기 ──
+async function loadSavedOrders() {
+  const list = document.getElementById('savedList');
+  const sub  = document.getElementById('savedSubtitle');
+  list.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;padding:20px 0">불러오는 중...</div>';
+
+  let query = sb.from('orders').select('*, profiles(name, email)').order('created_at', { ascending: false });
+  if (!isMaster) query = query.eq('user_id', currentUser.id);
+
+  const { data, error } = await query;
+  if (error) { list.innerHTML = '<div style="color:var(--danger)">불러오기 실패</div>'; return; }
+
+  sub.textContent = isMaster ? `전체 ${data.length}건` : `내 저장 ${data.length}건`;
+
+  if (!data.length) { list.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;padding:20px 0">저장된 항목이 없습니다.</div>'; return; }
+
+  // 날짜별 그룹
+  const groups = {};
+  data.forEach(o => {
+    const d = new Date(o.created_at).toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'short' });
+    if (!groups[d]) groups[d] = [];
+    groups[d].push(o);
+  });
+
+  list.innerHTML = Object.entries(groups).map(([date, orders]) => `
+    <div class="date-group">
+      <div class="date-label">${date}</div>
+      ${orders.map(o => `
+        <div class="order-item" onclick="openOrderModal('${o.id}')">
+          <div class="order-info">
+            <div class="order-name">${o.recipient_name || '(수취인 없음)'} ${o.phone ? '· ' + o.phone : ''}</div>
+            <div class="order-sub">${o.address || ''} ${o.zipcode ? '(' + o.zipcode + ')' : ''} ${o.freight_type ? '· ' + o.freight_type : ''} ${o.memo ? '· ' + o.memo : ''}</div>
+            ${isMaster ? `<div class="order-user">👤 ${o.profiles?.name || o.profiles?.email || ''}</div>` : ''}
+          </div>
+          <button class="order-del" onclick="event.stopPropagation();deleteOrder('${o.id}')">삭제</button>
+        </div>
+      `).join('')}
+    </div>
+  `).join('');
+}
+
+// ── 주문 상세 모달 ──
+async function openOrderModal(id) {
+  const { data, error } = await sb.from('orders').select('*, profiles(name,email)').eq('id', id).single();
+  if (error || !data) return;
+  const mc = document.getElementById('modalContent');
+  const parts = data.parts || [];
+  window._modalParts = parts;
+  window._modalOrderId = data.id;
+  window._modalIsOwner = currentUser && data.user_id === currentUser.id;
+  window._modalPhone = data.phone || '';
+  window._modalZip = data.zipcode || '';
+  window._modalAddr = data.address || '';
+  window._modalName = data.recipient_name || '';
+  window._modalMemo = data.memo || '';
+  const editable = window._modalIsOwner;
+  mc.innerHTML = `
+    <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:14px">
+      ${data.recipient_name || '(수취인 없음)'} 
+      <span style="font-size:0.8rem;color:var(--text2);font-weight:400">
+        ${new Date(data.created_at).toLocaleString('ko-KR')}
+      </span>
+    </h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:16px;padding:14px;background:var(--surface2);border-radius:8px;font-size:0.82rem">
+      <div><span style="color:var(--text2)">핸드폰</span><br><strong>${data.phone||'-'}</strong></div>
+      <div><span style="color:var(--text2)">우편번호</span><br><strong>${data.zipcode||'-'}</strong></div>
+      <div><span style="color:var(--text2)">주소</span><br><strong>${data.address||'-'}</strong></div>
+      <div><span style="color:var(--text2)">운임</span><br><strong>${data.freight_type||'-'}</strong></div>
+      ${data.memo ? `<div><span style="color:var(--text2)">메모</span><br><strong>${data.memo}</strong></div>` : ''}
+      ${isMaster ? `<div><span style="color:var(--text2)">저장자</span><br><strong>${data.profiles?.name||data.profiles?.email||'-'}</strong></div>` : ''}
+    </div>
+    ${isMaster ? `
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-copy" onclick="copyModalField('name')">🧑 수취인명 복사</button>
+      <button class="btn btn-copy" onclick="copyModalField('phone')">📱 핸드폰 복사</button>
+      <button class="btn btn-copy" onclick="copyModalField('zip')">📮 우편번호 복사</button>
+      <button class="btn btn-copy" onclick="copyModalField('addr')">📍 주소 복사</button>
+      ${data.memo ? `<button class="btn btn-copy" onclick="copyModalField('memo')">📝 메모 복사</button>` : ''}
+    </div>` : `
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-copy" onclick="copyModalField('name')">🧑 수취인명 복사</button>
+      ${data.memo ? `<button class="btn btn-copy" onclick="copyModalField('memo')">📝 메모 복사</button>` : ''}
+    </div>`}
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-copy"  onclick="copyModalCol('code')">📋 품번 복사</button>
+      <button class="btn btn-copy2" onclick="copyModalCol('qty')">🔢 수량 복사</button>
+      ${editable ? `<button class="btn-save" style="padding:8px 16px;font-size:0.82rem" onclick="saveModalQty()">💾 수량 수정 저장</button>` : ''}
+    </div>
+    ${editable ? `<div style="font-size:0.75rem;color:var(--text2);margin-bottom:8px">✏️ 본인이 저장한 항목이라 수량을 수정할 수 있어요.</div>` : ''}
+    <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
+      <thead><tr style="background:var(--surface2);border-bottom:2px solid var(--accent)">
+        <th style="padding:8px 12px;text-align:left;font-size:0.72rem;color:var(--text2)">부품</th>
+        <th style="padding:8px 12px;text-align:left;font-size:0.72rem;color:var(--text2)">품명</th>
+        <th style="padding:8px 12px;text-align:left;font-size:0.72rem;color:var(--text2);font-family:'JetBrains Mono',monospace">품번</th>
+        <th style="padding:8px 12px;text-align:left;font-size:0.72rem;color:var(--text2)">규격</th>
+        <th style="padding:8px 12px;text-align:right;font-size:0.72rem;color:var(--text2)">수량</th>
+      </tr></thead>
+      <tbody>
+        ${parts.map((r,i) => r.isHeader
+          ? `<tr style="background:var(--surface2)"><td colspan="5" style="padding:6px 12px;font-size:0.72rem;font-weight:700;color:var(--text2)">${r.label}</td></tr>`
+          : `<tr style="background:${i%2===0?'var(--row-odd)':'var(--row-even)'}">
+              <td style="padding:8px 12px;color:var(--text2);font-size:0.72rem">${r.label||''}</td>
+              <td style="padding:8px 12px">${r.name||''}</td>
+              <td style="padding:8px 12px;font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--text2)">${r.code||''}</td>
+              <td style="padding:8px 12px;color:var(--text2)">${r.spec||''}</td>
+              <td style="padding:8px 12px;text-align:right;font-weight:700;color:var(--accent2)">${
+                editable
+                  ? `<input type="number" min="0" value="${r.qty||0}" data-idx="${i}" style="width:64px;text-align:right;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:3px 6px" onchange="window._modalParts[${i}].qty=Math.max(0,parseInt(this.value)||0)">`
+                  : (r.qty>0?r.qty:'-')
+              }</td>
+            </tr>`
+        ).join('')}
+      </tbody>
+    </table>
+  `;
+  document.getElementById('orderModal').style.display = '';
+}
+
+async function saveModalQty() {
+  const { error } = await sb.from('orders').update({ parts: window._modalParts }).eq('id', window._modalOrderId);
+  if (error) { showToast('수정 실패: ' + error.message); return; }
+  showToast('수량 수정 완료!');
+  if (document.getElementById('viewByAccount').style.display !== 'none') loadByAccount();
+  else loadSavedOrders();
+}
+
+function closeModal() {
+  document.getElementById('orderModal').style.display = 'none';
+}
+
+// ── 삭제 ──
+async function deleteOrder(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  const { error } = await sb.from('orders').delete().eq('id', id);
+  if (error) { showToast('삭제 실패'); return; }
+  showToast('삭제 완료');
+  if (document.getElementById('viewByAccount').style.display !== 'none') loadByAccount();
+  else loadSavedOrders();
+}
+
+// ── 계정별 저장 목록 (마스터 전용) ──
+async function loadByAccount() {
+  const list = document.getElementById('byAccountList');
+  const sub  = document.getElementById('byAccountSubtitle');
+  if (!isMaster) { list.innerHTML = ''; return; }
+  list.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;padding:20px 0">불러오는 중...</div>';
+
+  const { data, error } = await sb.from('orders').select('*, profiles(name, email)').order('created_at', { ascending: false });
+  if (error) { list.innerHTML = '<div style="color:var(--danger)">불러오기 실패</div>'; return; }
+
+  sub.textContent = `전체 ${data.length}건 · 계정 ${new Set(data.map(o => o.user_id)).size}명`;
+
+  if (!data.length) { list.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;padding:20px 0">저장된 항목이 없습니다.</div>'; return; }
+
+  // 1) 계정별 그룹
+  const accGroups = {};
+  data.forEach(o => {
+    const key = o.user_id;
+    if (!accGroups[key]) accGroups[key] = { name: o.profiles?.name || o.profiles?.email || '(알 수 없음)', email: o.profiles?.email || '', items: [] };
+    accGroups[key].items.push(o);
+  });
+
+  list.innerHTML = Object.values(accGroups).map(acc => {
+    // 2) 계정 내에서 일자별 그룹
+    const dateGroups = {};
+    acc.items.forEach(o => {
+      const d = new Date(o.created_at).toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'short' });
+      if (!dateGroups[d]) dateGroups[d] = [];
+      dateGroups[d].push(o);
+    });
+    return `
+      <div class="account-group" style="margin-bottom:28px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <div style="padding:12px 16px;background:var(--surface2);font-weight:700;display:flex;justify-content:space-between;align-items:center">
+          <span>👤 ${acc.name} ${acc.email ? `<span style="color:var(--text2);font-weight:400;font-size:0.8rem">(${acc.email})</span>` : ''}</span>
+          <span style="color:var(--text2);font-weight:400;font-size:0.8rem">${acc.items.length}건</span>
+        </div>
+        <div style="padding:14px 16px">
+          ${Object.entries(dateGroups).map(([date, orders]) => `
+            <div class="date-group">
+              <div class="date-label">${date}</div>
+              ${orders.map(o => `
+                <div class="order-item" onclick="openOrderModal('${o.id}')">
+                  <div class="order-info">
+                    <div class="order-name">${o.recipient_name || '(수취인 없음)'} ${o.phone ? '· ' + o.phone : ''}</div>
+                    <div class="order-sub">${o.address || ''} ${o.zipcode ? '(' + o.zipcode + ')' : ''} ${o.freight_type ? '· ' + o.freight_type : ''} ${o.memo ? '· ' + o.memo : ''}</div>
+                  </div>
+                  <button class="order-del" onclick="event.stopPropagation();deleteOrder('${o.id}')">삭제</button>
+                </div>
+              `).join('')}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── 초기 로드시 단품 드롭다운 채우기 ──
+populateSingleCatSelect();
+
+// ── 회원 목록 (마스터 전용) ──
+async function loadMembers() {
+  const list = document.getElementById('membersList');
+  const sub  = document.getElementById('membersSubtitle');
+  if (!isMaster) { list.innerHTML = ''; return; }
+  list.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;padding:20px 0">불러오는 중...</div>';
+
+  const { data, error } = await sb.from('profiles').select('*').order('created_at', { ascending: true });
+  if (error) { list.innerHTML = '<div style="color:var(--danger)">불러오기 실패</div>'; return; }
+
+  sub.textContent = `총 ${data.length}명`;
+
+  if (!data.length) { list.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;padding:20px 0">가입한 회원이 없습니다.</div>'; return; }
+
+  list.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:0.85rem">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">이름</th>
+          <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">이메일</th>
+          <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">가입일</th>
+          <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">구분</th>
+          <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">권한 관리</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${data.map(m => `
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:10px 12px">${m.name || '-'}</td>
+            <td style="padding:10px 12px">${m.email || '-'}</td>
+            <td style="padding:10px 12px;color:var(--text2)">${m.created_at ? new Date(m.created_at).toLocaleDateString('ko-KR') : '-'}</td>
+            <td style="padding:10px 12px">${m.is_master ? '<span style="color:var(--accent);font-weight:700">마스터</span>' : '일반'}</td>
+            <td style="padding:10px 12px">
+              ${m.id === currentUser.id
+                ? '<span style="color:var(--text2);font-size:0.75rem">(본인)</span>'
+                : m.is_master
+                  ? `<button class="btn" style="padding:5px 10px;font-size:0.75rem" onclick="toggleMaster('${m.id}', false, '${(m.name||m.email||'').replace(/'/g,"")}')">마스터 해제</button>`
+                  : `<button class="btn btn-copy" style="padding:5px 10px;font-size:0.75rem" onclick="toggleMaster('${m.id}', true, '${(m.name||m.email||'').replace(/'/g,"")}')">마스터로 지정</button>`
+              }
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+    <p style="color:var(--text2);font-size:0.75rem;margin-top:10px">※ 권한 변경은 해당 계정이 다시 로그인(또는 새로고침 후 재접속)해야 반영됩니다.</p>
+  `;
+}
+
+async function toggleMaster(id, makeMaster, name) {
+  const msg = makeMaster ? `${name} 님을 마스터로 지정할까요? 전체 저장 목록/회원 목록을 볼 수 있게 됩니다.`
+                         : `${name} 님의 마스터 권한을 해제할까요?`;
+  if (!confirm(msg)) return;
+  const { error } = await sb.from('profiles').update({ is_master: makeMaster }).eq('id', id);
+  if (error) { showToast('변경 실패: ' + error.message); return; }
+  showToast(makeMaster ? '마스터로 지정 완료!' : '마스터 권한 해제 완료!');
+  loadMembers();
+}
+</script>
+</body>
+</html>
