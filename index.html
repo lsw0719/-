@@ -1074,7 +1074,6 @@ function normalizeOrderText(text) {
     /조절좌/g,
     /L\s*형\s*플레이트/g,
     /사이드안전바/g,
-    /단추가/g,
     /수취인정보/g,
     /배송지/g,
     /메모\s/g,
@@ -1092,6 +1091,7 @@ function parseOrderBlock(rawText) {
     hammerQty:0, hookQty:0, levelQty:0, lplateQty:0,
     bogangQty:0, bogangSpec:null,
     curtainQty:0, meshQty:0, meshColor:null, meshDims:null,
+    tierAddQty:0, tierAddDims:null,
     name:'', phone:'', zip:'', address:'', memo:'',
     unrecognized:[],
   };
@@ -1191,7 +1191,13 @@ function parseOrderBlock(rawText) {
       const m = line.match(/(\d+)\s*세트/);
       result.meshQty = m ? +m[1] : 1;
     }
-    if (/사이드안전바|단추가/.test(line)) {
+    if (/단추가/.test(line)) {
+      const dm = line.match(/(\d{2,4})\s*[\*x×]\s*(\d{2,4})/);
+      const m = line.match(/(\d+)\s*(?:개|세트)/);
+      result.tierAddQty = m ? +m[1] : 1;
+      if (dm) result.tierAddDims = { w:+dm[1], d:+dm[2] };
+    }
+    if (/사이드안전바/.test(line)) {
       result.unrecognized.push(line);
     }
   });
@@ -1203,17 +1209,53 @@ function parseOrderBlock(rawText) {
     recipientLines = recipientLines.filter(l => l !== memoLine);
   }
 
-  // 이름/전화/우편번호/주소 — 줄이 나뉘어 있든 한 줄에 붙어있든 모두 대응
+  // 이름/전화/우편번호/주소 — "수취인명 값" 처럼 라벨이 붙은 형식을 우선 인식
   if (recipientLines.length) {
-    let rest = recipientLines.join(' ').replace(/\s+/g, ' ').trim();
-    const phoneM = rest.match(/(?<!\d)0\d{1,3}[-\s]?\d{3,4}[-\s]?\d{4}(?!\d)/);
-    if (phoneM) { result.phone = phoneM[0]; rest = rest.replace(phoneM[0], ' '); }
-    const zipM = rest.match(/\(?(\d{5})\)?/);
-    if (zipM) { result.zip = zipM[1]; rest = rest.replace(zipM[0], ' '); }
-    rest = rest.replace(/\s+/g, ' ').trim();
-    const nameM = rest.match(/^([가-힣]{2,5})\s+/);
-    if (nameM) { result.name = nameM[1]; rest = rest.slice(nameM[0].length).trim(); }
-    result.address = rest;
+    const LABELS = [
+      { type:'name',    re:/^수취인\s*명\s*[:\t]?\s*/ },
+      { type:'phone',   re:/^연락처\s*\d*\s*[:\t]?\s*/ },
+      { type:'phone',   re:/^전화\s*\d*\s*[:\t]?\s*/ },
+      { type:'phone',   re:/^핸드폰\s*[:\t]?\s*/ },
+      { type:'zip',     re:/^우편번호\s*[:\t]?\s*/ },
+      { type:'address', re:/^배송지\s*주소\s*[:\t]?\s*/ },
+      { type:'address', re:/^배송지\s*[:\t]?\s*/ },
+      { type:'address', re:/^주소\s*[:\t]?\s*/ },
+    ];
+    const labeled = { name:[], phone:[], zip:[], address:[] };
+    let curType = null, hasLabeled = false;
+    recipientLines.forEach(line => {
+      const hit = LABELS.find(l => l.re.test(line));
+      if (hit) {
+        hasLabeled = true; curType = hit.type;
+        const val = line.replace(hit.re, '').trim();
+        if (val) labeled[curType].push(val);
+      } else if (curType) {
+        labeled[curType].push(line); // 라벨 없는 다음 줄은 이전 항목의 이어지는 내용으로 처리
+      }
+    });
+
+    if (hasLabeled) {
+      result.name = labeled.name.join(' ').trim();
+      let addr = labeled.address.join(' ').replace(/\s+/g, ' ').trim();
+      const zipInAddr = addr.match(/\(?(\d{5})\)?/);
+      if (zipInAddr) { result.zip = zipInAddr[1]; addr = addr.replace(zipInAddr[0], '').replace(/\s+/g,' ').trim(); }
+      else if (labeled.zip.length) { result.zip = (labeled.zip.join(' ').match(/\d{5}/) || [''])[0]; }
+      result.address = addr;
+      const phoneText = labeled.phone.join(' ');
+      const phoneM = phoneText.match(/(?<!\d)0\d{1,3}[-\s]?\d{3,4}[-\s]?\d{4}(?!\d)/);
+      result.phone = phoneM ? phoneM[0] : phoneText.trim();
+    } else {
+      // 라벨 없는 형식 — 줄이 나뉘어 있든 한 줄에 붙어있든 모두 대응
+      let rest = recipientLines.join(' ').replace(/\s+/g, ' ').trim();
+      const phoneM = rest.match(/(?<!\d)0\d{1,3}[-\s]?\d{3,4}[-\s]?\d{4}(?!\d)/);
+      if (phoneM) { result.phone = phoneM[0]; rest = rest.replace(phoneM[0], ' '); }
+      const zipM = rest.match(/\(?(\d{5})\)?/);
+      if (zipM) { result.zip = zipM[1]; rest = rest.replace(zipM[0], ' '); }
+      rest = rest.replace(/\s+/g, ' ').trim();
+      const nameM = rest.match(/^([가-힣]{2,5})\s+/);
+      if (nameM) { result.name = nameM[1]; rest = rest.slice(nameM[0].length).trim(); }
+      result.address = rest;
+    }
   }
   return result;
 }
@@ -1377,6 +1419,49 @@ function applyParsedOrder(r) {
     }
   } else if (r.meshQty > 0) {
     r.unrecognized.push('메쉬보드 (규격 인식 실패) — 직접 선택 필요');
+  }
+
+  // 단추가 (선반/받침 단수 추가)
+  if (r.tierAddQty > 0 && r.tierAddDims) {
+    const { w, d } = r.tierAddDims;
+    const color = r.color || 'W';
+    const thick = r.plywoodThick || 9;
+    if (r.rackType === '스피드랙' || r.rackType === '홈던트') {
+      const colorWord = color === 'B' ? '블랙' : '화이트';
+      const widthPart = SINGLE_PARTS.find(p => p.cat === '받침' && p.rack.includes(r.rackType) && p.spec === String(w) && p.name.endsWith('/' + colorWord));
+      const depthPart = SINGLE_PARTS.find(p => p.cat === '받침' && p.rack.includes(r.rackType) && p.spec === String(d) && p.name.endsWith('/' + colorWord));
+      const plyCode = PLYWOOD[thick]?.[`${w}*${d}`] || PLYWOOD[thick]?.[`${d}*${w}`];
+      if (widthPart && depthPart && plyCode) {
+        entries.push({ id: entryId++, rackType:'부속품', code:widthPart.code, name:widthPart.name, spec:widthPart.spec, qty: 2 * r.tierAddQty });
+        entries.push({ id: entryId++, rackType:'부속품', code:depthPart.code, name:depthPart.name, spec:depthPart.spec, qty: 2 * r.tierAddQty });
+        entries.push({ id: entryId++, rackType:'부속품', code:plyCode, name:'합판', spec:`${w}*${d}*${thick}T`, qty: r.tierAddQty });
+        applied.push(`단추가(${w}*${d}) ${r.tierAddQty}세트`);
+      } else {
+        r.unrecognized.push(`단추가 규격(${w}*${d}) 코드 못 찾음`);
+      }
+    } else if (r.rackType === '경량랙') {
+      const depthPart = SINGLE_PARTS.find(p => p.cat === '공용받침' && p.rack.includes('경량랙') && p.spec === String(d));
+      const shelfPart = SINGLE_PARTS.find(p => p.cat === '선반' && p.rack.includes('경량랙') && p.spec === `${w}*${d}`);
+      if (depthPart && shelfPart) {
+        entries.push({ id: entryId++, rackType:'부속품', code:depthPart.code, name:depthPart.name, spec:depthPart.spec, qty: 2 * r.tierAddQty });
+        entries.push({ id: entryId++, rackType:'부속품', code:shelfPart.code, name:shelfPart.name, spec:shelfPart.spec, qty: r.tierAddQty });
+        applied.push(`단추가(${w}*${d}) ${r.tierAddQty}세트`);
+      } else {
+        r.unrecognized.push(`단추가 규격(${w}*${d}) 코드 못 찾음`);
+      }
+    } else if (r.rackType === '중량랙') {
+      const depthPart = SINGLE_PARTS.find(p => p.cat === '선반받침' && p.rack.includes('중량랙') && p.spec === String(d));
+      const shelfPart = SINGLE_PARTS.find(p => p.cat === '선반' && p.rack.includes('중량랙') && p.spec === `${w}*${d}`);
+      if (depthPart && shelfPart) {
+        entries.push({ id: entryId++, rackType:'부속품', code:depthPart.code, name:depthPart.name, spec:depthPart.spec, qty: 2 * r.tierAddQty });
+        entries.push({ id: entryId++, rackType:'부속품', code:shelfPart.code, name:shelfPart.name, spec:shelfPart.spec, qty: r.tierAddQty });
+        applied.push(`단추가(${w}*${d}) ${r.tierAddQty}세트`);
+      } else {
+        r.unrecognized.push(`단추가 규격(${w}*${d}) 코드 못 찾음`);
+      }
+    } else {
+      r.unrecognized.push(`단추가 (랙 종류 확인 필요)`);
+    }
   }
 
   if (r.name)    document.getElementById('recipientName').value  = r.name;
