@@ -1059,19 +1059,55 @@ function switchType(type) {
 // ════════════════════════════════════════════════════════
 // 텍스트 붙여넣기 빠른 입력 (단건 + 여러 건 일괄 저장)
 // ════════════════════════════════════════════════════════
-function parseOrderBlock(text) {
+// 줄바꿈 없이 붙어있는 텍스트도 항목별로 분리되도록 전처리
+function normalizeOrderText(text) {
+  let t = text;
+  const breakBefore = [
+    /\d+\s*보강대/g,
+    /정면커튼/g,
+    /커튼봉(?!\S)/g,
+    /메쉬보드/g,
+    /소형조립망치/g,
+    /우레탄망치/g,
+    /리버후크/g,
+    /(?<!정면)(?<!리버서블C)후크/g,
+    /조절좌/g,
+    /L\s*형\s*플레이트/g,
+    /사이드안전바/g,
+    /단추가/g,
+    /수취인정보/g,
+    /배송지/g,
+    /메모\s/g,
+  ];
+  breakBefore.forEach(re => { t = t.replace(re, m => '\n' + m); });
+  return t;
+}
+
+function parseOrderBlock(rawText) {
+  const text = normalizeOrderText(rawText);
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length);
   const result = {
     rackType:null, division:null, color:null, plywoodThick:null,
     rackDims:[], plywoodDims:[],
     hammerQty:0, hookQty:0, levelQty:0, lplateQty:0,
+    bogangQty:0, bogangSpec:null,
+    curtainQty:0, meshQty:0, meshColor:null, meshDims:null,
     name:'', phone:'', zip:'', address:'', memo:'',
     unrecognized:[],
   };
 
-  const recipIdx = lines.findIndex(l => /수취인|배송지/.test(l));
-  const specLines      = recipIdx >= 0 ? lines.slice(0, recipIdx) : lines;
-  let recipientLines    = recipIdx >= 0 ? lines.slice(recipIdx + 1) : [];
+  // "수취인정보"/"배송지"가 한 줄의 맨 앞이 아니라 중간에 붙어 나오는 경우까지 대응
+  const recipLineIdx = lines.findIndex(l => /수취인정보|배송지/.test(l));
+  let specLines, recipientLines;
+  if (recipLineIdx >= 0) {
+    specLines = lines.slice(0, recipLineIdx);
+    const headerLine = lines[recipLineIdx];
+    const after = headerLine.replace(/.*?(수취인정보|배송지)\s*/, '').trim();
+    recipientLines = [...(after ? [after] : []), ...lines.slice(recipLineIdx + 1)];
+  } else {
+    specLines = lines;
+    recipientLines = [];
+  }
 
   for (const line of specLines) {
     for (const rt of ['경량랙','중량랙','스피드랙','홈던트']) { if (line.includes(rt)) { result.rackType = rt; break; } }
@@ -1110,6 +1146,7 @@ function parseOrderBlock(text) {
   // 단독 합판(랙 없이 규격만 표시된 라인, 예: "800*400>2장" / "400*300>3장") — "장" 단위가 명시된 경우만 인정
   specLines.forEach(line => {
     if (usedForDim.has(line)) return;
+    if (/메쉬/.test(line)) return; // 메쉬보드 규격은 합판이 아님
     const dm = line.match(/(\d{3,4})\s*[\*x×]\s*(\d{3,4})(?!\s*[\*x×]\s*\d)/);
     if (!dm) return;
     const qm = line.match(/(\d+)\s*장/);
@@ -1136,30 +1173,47 @@ function parseOrderBlock(text) {
       const m = line.match(/(\d+)\s*(?:개|세트)/);
       result.lplateQty = m ? +m[1] : 1;
     }
+    if (/보강대/.test(line)) {
+      const sm = line.match(/(\d+)\s*보강대/);
+      if (sm) result.bogangSpec = +sm[1];
+      const m = line.match(/보강대\D*?(\d+)\s*(?:개|세트)/);
+      result.bogangQty = m ? +m[1] : 1;
+    }
+    if (/정면커튼|커튼봉|커튼세트/.test(line)) {
+      const m = line.match(/(\d+)\s*(?:개|세트)/);
+      result.curtainQty = m ? +m[1] : 1;
+    }
+    if (/메쉬보드/.test(line)) {
+      if (/화이트|백색/.test(line)) result.meshColor = 'W';
+      else if (/블랙|흑색|불랙/.test(line)) result.meshColor = 'B';
+      const dm = line.match(/(\d{2,4})\s*[\*x×]\s*(\d{2,4})/);
+      if (dm) result.meshDims = { w:+dm[1], d:+dm[2] };
+      const m = line.match(/(\d+)\s*세트/);
+      result.meshQty = m ? +m[1] : 1;
+    }
     if (/사이드안전바|단추가/.test(line)) {
       result.unrecognized.push(line);
     }
   });
 
-  // 메모 라인 (수취인 정보 블록 내 "메모 ..." 형태)
+  // 메모 라인
   const memoLine = recipientLines.find(l => /^메모\s*[:：]?\s*/.test(l));
   if (memoLine) {
     result.memo = memoLine.replace(/^메모\s*[:：]?\s*/, '').trim();
     recipientLines = recipientLines.filter(l => l !== memoLine);
   }
 
+  // 이름/전화/우편번호/주소 — 줄이 나뉘어 있든 한 줄에 붙어있든 모두 대응
   if (recipientLines.length) {
-    const phoneLine = recipientLines.find(l => /0\d{1,3}[-\s]?\d{3,4}[-\s]?\d{4}/.test(l));
-    const zipLine   = recipientLines.find(l => /\(?\d{5}\)?/.test(l) && l !== phoneLine);
-    const nameLine  = recipientLines.find(l => l !== phoneLine && l !== zipLine) || '';
-    result.name  = nameLine;
-    result.phone = phoneLine ? (phoneLine.match(/0\d{1,3}[-\s]?\d{3,4}[-\s]?\d{4}/) || [''])[0] : '';
-    result.zip   = zipLine ? (zipLine.match(/(\d{5})/) || ['',''])[1] : '';
-    // 우편번호와 주소가 한 줄에 같이 있는 경우, 우편번호만 제거하고 나머지는 주소에 포함
-    const zipRemainder = zipLine ? zipLine.replace(/\(?\d{5}\)?/, '').trim() : '';
-    const used = new Set([nameLine, phoneLine, zipLine]);
-    const restLines = recipientLines.filter(l => !used.has(l));
-    result.address = [zipRemainder, ...restLines].filter(Boolean).join(' ');
+    let rest = recipientLines.join(' ').replace(/\s+/g, ' ').trim();
+    const phoneM = rest.match(/(?<!\d)0\d{1,3}[-\s]?\d{3,4}[-\s]?\d{4}(?!\d)/);
+    if (phoneM) { result.phone = phoneM[0]; rest = rest.replace(phoneM[0], ' '); }
+    const zipM = rest.match(/\(?(\d{5})\)?/);
+    if (zipM) { result.zip = zipM[1]; rest = rest.replace(zipM[0], ' '); }
+    rest = rest.replace(/\s+/g, ' ').trim();
+    const nameM = rest.match(/^([가-힣]{2,5})\s+/);
+    if (nameM) { result.name = nameM[1]; rest = rest.slice(nameM[0].length).trim(); }
+    result.address = rest;
   }
   return result;
 }
@@ -1266,6 +1320,63 @@ function applyParsedOrder(r) {
     document.getElementById('acc-qty').value = r.lplateQty;
     addAccessory();
     applied.push(`L형플레이트세트 ${r.lplateQty}개`);
+  }
+
+  // 보강대 (단품 DB에서 색상+길이로 찾아서 직접 추가)
+  if (r.bogangQty > 0) {
+    const allowed = r.rackType ? [r.rackType] : ['스피드랙','홈던트'];
+    const cand = SINGLE_PARTS.filter(p => p.cat === '보강대' && p.rack.some(rk => allowed.includes(rk)) &&
+      (r.bogangSpec ? p.spec === String(r.bogangSpec) : true) &&
+      (r.color ? p.name.endsWith('/' + r.color) : true));
+    if (cand.length) {
+      const p = cand[0];
+      entries.push({ id: entryId++, rackType:'부속품', code:p.code, name:p.name, spec:p.spec, qty:r.bogangQty });
+      applied.push(`보강대 ${p.spec} ${r.bogangQty}개`);
+    } else {
+      r.unrecognized.push(`보강대${r.bogangSpec?' '+r.bogangSpec:''} (규격 코드 못 찾음)`);
+    }
+  }
+
+  // 커튼세트 (홈던트 전용, 랙 자체 규격(가로*높이)에 맞춰 자동 매칭)
+  if (r.curtainQty > 0 && r.rackType === '홈던트' && r.rackDims.length) {
+    const d0 = r.rackDims[0];
+    const specKey = `${d0.width}*${d0.height}`;
+    document.getElementById('acc-select').value = 'curtain-home-front';
+    onAccSelect();
+    const specSel = document.getElementById('acc-spec1');
+    if ([...specSel.options].some(o => o.value === specKey)) {
+      specSel.value = specKey;
+      onAccSpecChange();
+      document.getElementById('acc-qty').value = r.curtainQty;
+      addAccessory();
+      applied.push(`정면커튼세트(${specKey}) ${r.curtainQty}개`);
+    } else {
+      r.unrecognized.push(`정면커튼세트 규격(${specKey}) 못 찾음 — 직접 선택 필요`);
+    }
+  } else if (r.curtainQty > 0) {
+    r.unrecognized.push('커튼세트 (랙 규격 미확인 또는 홈던트 아님)');
+  }
+
+  // 메쉬보드 (색상+규격으로 매칭, 홈던트/스피드랙 모두 지원)
+  if (r.meshQty > 0 && r.meshDims) {
+    const meshColor = r.meshColor || r.color || 'W';
+    const key = (r.rackType === '스피드랙' ? 'mesh-speed-' : 'mesh-home-') + (meshColor === 'B' ? 'b' : 'w');
+    const db = MESH_DB[key];
+    const wd1 = `${r.meshDims.w}*${r.meshDims.d}`, wd2 = `${r.meshDims.d}*${r.meshDims.w}`;
+    const spec = db && db.specs.find(s => s.label.startsWith(wd1) || s.label.startsWith(wd2));
+    if (spec) {
+      document.getElementById('acc-select').value = key;
+      onAccSelect();
+      document.getElementById('acc-spec1').value = spec.key;
+      onAccSpecChange();
+      document.getElementById('acc-qty').value = r.meshQty;
+      addAccessory();
+      applied.push(`메쉬보드세트(${spec.label}) ${r.meshQty}개`);
+    } else {
+      r.unrecognized.push(`메쉬보드 규격(${wd1}) 못 찾음 — 직접 선택 필요`);
+    }
+  } else if (r.meshQty > 0) {
+    r.unrecognized.push('메쉬보드 (규격 인식 실패) — 직접 선택 필요');
   }
 
   if (r.name)    document.getElementById('recipientName').value  = r.name;
