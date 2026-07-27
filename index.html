@@ -364,12 +364,26 @@
       <div class="field"><label>색상</label>
         <select id="s-color"><option value="W">화이트</option><option value="B">블랙</option></select>
       </div>
+      <div class="field"><label>프레임 두께</label>
+        <select id="s-thick" onchange="onSpeedFormChange()">
+          <option value="160" selected>1.6T</option>
+          <option value="200">2.0T</option>
+        </select>
+      </div>
       <div class="field"><label>기둥 높이 (mm)</label>
         <select id="s-height">
           <option value="330">330</option><option value="420">420</option><option value="600">600</option>
           <option value="750">750</option><option value="900">900</option><option value="1200">1200</option>
           <option value="1500">1500</option><option value="1800" selected>1800</option>
           <option value="2100">2100</option><option value="2400">2400</option>
+          <option class="split-opt" value="split1200">1200 (600+600)</option>
+          <option class="split-opt" value="split1350">1350 (600+750)</option>
+          <option class="split-opt" value="split1500">1500 (750+750)</option>
+          <option class="split-opt" value="split1650">1650 (750+900)</option>
+          <option class="split-opt" value="split1800">1800 (900+900)</option>
+          <option class="split-opt" value="split1950">1950 (750+1200)</option>
+          <option class="split-opt" value="split2100">2100 (900+1200)</option>
+          <option class="split-opt" value="split2400">2400 (1200+1200)</option>
         </select>
       </div>
       <div class="field"><label>받침 가로규격 (mm)</label>
@@ -402,33 +416,6 @@
       </div>
     </div>
     <div id="s-plywood-preview" style="margin-top:10px;font-size:0.78rem;font-family:'JetBrains Mono',monospace;min-height:1.2em;color:var(--text2)"></div>
-
-    <!-- 운임 선택 -->
-    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-      <div style="font-size:0.72rem;font-weight:700;color:var(--text2);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px">운임</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem">
-          <input type="radio" name="s-freight" value="택배" checked onchange="onFreightChange()"> 택배
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem">
-          <input type="radio" name="s-freight" value="파렛" onchange="onFreightChange()"> 파렛
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem">
-          <input type="radio" name="s-freight" value="용차" onchange="onFreightChange()"> 용차
-        </label>
-      </div>
-      <!-- 용차: 주소 검색 + 선택 -->
-      <div id="field-freight-addr" style="display:none">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="text" id="freight-search" placeholder="지역 검색..." oninput="onFreightSearch()"
-            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:8px 12px;outline:none;width:180px">
-          <select id="freight-addr" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:8px 12px;outline:none;flex:1;min-width:200px" onchange="onFreightAddrSelect()">
-            <option value="">-- 지역 선택 --</option>
-          </select>
-          <span id="freight-price-preview" style="font-size:0.82rem;font-family:'JetBrains Mono',monospace;color:var(--accent2);white-space:nowrap"></span>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- 홈던트 -->
@@ -487,32 +474,6 @@
       </div>
     </div>
     <div id="h-plywood-preview" style="margin-top:10px;font-size:0.78rem;font-family:'JetBrains Mono',monospace;min-height:1.2em;color:var(--text2)"></div>
-
-    <!-- 운임 선택 -->
-    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-      <div style="font-size:0.72rem;font-weight:700;color:var(--text2);letter-spacing:0.06em;text-transform:uppercase;margin-bottom:10px">운임</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem">
-          <input type="radio" name="h-freight" value="택배" checked onchange="onHomeDentFreightChange()"> 택배
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem">
-          <input type="radio" name="h-freight" value="파렛" onchange="onHomeDentFreightChange()"> 파렛
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:0.85rem">
-          <input type="radio" name="h-freight" value="용차" onchange="onHomeDentFreightChange()"> 용차
-        </label>
-      </div>
-      <div id="field-h-freight-addr" style="display:none">
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <input type="text" id="h-freight-search" placeholder="지역 검색..." oninput="onHomeDentFreightSearch()"
-            style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:8px 12px;outline:none;width:180px">
-          <select id="h-freight-addr" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:8px 12px;outline:none;flex:1;min-width:200px" onchange="onHomeDentFreightAddrSelect()">
-            <option value="">-- 지역 선택 --</option>
-          </select>
-          <span id="h-freight-price-preview" style="font-size:0.82rem;font-family:'JetBrains Mono',monospace;color:var(--accent2);white-space:nowrap"></span>
-        </div>
-      </div>
-    </div>
   </div>
 
   <div class="error-msg" id="errorMsg">⚠ 해당 규격의 부품을 찾을 수 없습니다. 규격을 확인해주세요.</div>
@@ -548,6 +509,13 @@
         <option value="level-speed-6">스피드랙/부품/소형조절좌세트/N (조절좌4+브라켓4+볼트10+너트10)</option>
         <option value="level-speed-12">스피드랙/부품/조절좌/N (12mm 단품)</option>
         <option value="level-speed-bracket">스피드랙/부품/조절좌브라켓세트/N (브라켓1+볼트2+너트2)</option>
+        <option value="wheel-light">경량랙/부속/바퀴세트/N</option>
+        <option value="wheel-speed-large">스피드랙/부속/바퀴세트(대형,3인치)/N</option>
+        <option value="wheel-speed-small">스피드랙/부속/바퀴세트(소형,2인치)/N</option>
+        <option value="wheel-home-small">홈던트/부속/바퀴세트(소형,2인치)/N</option>
+        <option value="wheel-home-large">홈던트/부속/바퀴세트(대형,3인치)/N</option>
+        <option value="drawer3-home-w">홈던트/부속/3단서랍장세트/W</option>
+        <option value="drawer3-home-b">홈던트/부속/3단서랍장세트/B</option>
       </select>
     </div>
     <!-- 규격 선택 (커튼류 선택 시 표시) -->
@@ -582,8 +550,6 @@
       <button class="btn btn-danger" onclick="clearAll()">전체 삭제</button>
     </div>
   </div>
-  <!-- 운임 요약 -->
-  <div id="freightSummary" style="display:none;margin-bottom:14px;padding:12px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;font-size:0.82rem;display:flex;gap:20px;flex-wrap:wrap"></div>
   <table>
     <thead><tr><th>부품</th><th>품명</th><th>품번</th><th>규격</th><th>수량</th></tr></thead>
     <tbody id="resultBody"></tbody>
@@ -766,6 +732,34 @@ const SPEED_연결받침 = {
   W:{300:'3S23W000030',400:'3S23W000040',500:'3S23W000050',600:'3S23W000060'},
   B:{300:'3S23B000030',400:'3S23B000040',500:'3S23B000050',600:'3S23B000060'},
 };
+
+// 분리기둥 조합: 선택높이 → [실제기둥1, 실제기둥2]
+const SPEED_기둥조합 = {
+  1200: [600,600], 1350: [600,750], 1500: [750,750], 1650: [750,900],
+  1800: [900,900], 1950: [750,1200], 2100: [900,1200], 2400: [1200,1200],
+};
+// 분리기둥 연결 브라켓
+const SPEED_브라켓 = { W:'3S56C400090', B:'3S56B400090' };
+
+// 스피드랙 2T (화이트만 존재)
+const SPEED_기둥_200 = {
+  W:{750:'3S31W000075',900:'3S31W000090',1200:'3S31W000120',1500:'3S31W000150',
+     1800:'3S31W000180',2100:'3S31W000210',2400:'3S31W000240'},
+};
+const SPEED_받침_200 = {
+  W:{300:'3S32W000030',400:'3S32W000040',500:'3S32W000050',600:'3S32W000060',
+     700:'3S32W000070',800:'3S32W000080',900:'3S32W000090',1000:'3S32W000100',
+     1100:'3S32W000110',1200:'3S32W000120',1500:'3S32W000150'},
+};
+const SPEED_연결받침_200 = {
+  W:{300:'3S33W000030',400:'3S33W000040',500:'3S33W000050',600:'3S33W000060'},
+};
+// 프레임 두께에 따라 기둥/받침/연결받침 테이블 선택 (행거받침·행거봉은 공용, 두께 구분 없음)
+function speedTables(thick) {
+  return thick === '200'
+    ? { 기둥: SPEED_기둥_200, 받침: SPEED_받침_200, 연결받침: SPEED_연결받침_200 }
+    : { 기둥: SPEED_기둥, 받침: SPEED_받침, 연결받침: SPEED_연결받침 };
+}
 
 // 행거형 가능 가로 규격 (행거봉 있는 것만)
 // 행거형 가능 가로 규격 = 행거봉 규격과 받침 규격의 교집합
@@ -971,74 +965,6 @@ function addHomeDent() {
   renderAll();
 }
 
-// ════════════════════════════════════════════════════════
-// 용차 운임 데이터 (1.4톤 기준)
-// ════════════════════════════════════════════════════════
-const FREIGHT_DATA = [
-  {addr:'강원도 강릉시',price:240000},{addr:'강원도 강릉시 주문진읍',price:250000},{addr:'강원도 고성군',price:280000},{addr:'강원도 고성군 간성읍',price:260000},{addr:'강원도 동해시',price:250000},{addr:'강원도 삼척시',price:260000},{addr:'강원도 삼척시 원덕읍',price:280000},{addr:'강원도 속초시',price:250000},{addr:'강원도 양구군',price:190000},{addr:'강원도 양양군',price:250000},{addr:'강원도 영월군',price:190000},{addr:'강원도 원주시',price:150000},{addr:'강원도 인제군',price:190000},{addr:'강원도 정선군',price:220000},{addr:'강원도 철원군',price:150000},{addr:'강원도 춘천시',price:150000},{addr:'강원도 태백시',price:250000},{addr:'강원도 평창군',price:190000},{addr:'강원도 평창군 용평면',price:220000},{addr:'강원도 홍천군',price:150000},{addr:'강원도 화천군',price:190000},{addr:'강원도 횡성군',price:150000},
-  {addr:'경기도 가평군',price:120000},{addr:'경기도 고양시 덕양구',price:60000},{addr:'경기도 고양시 일산서구, 동구',price:55000},{addr:'경기도 과천시',price:80000},{addr:'경기도 광명시',price:70000},{addr:'경기도 광주시',price:90000},{addr:'경기도 광주시 곤지암읍',price:90000},{addr:'경기도 광주시 초월읍',price:95000},{addr:'경기도 구리시',price:80000},{addr:'경기도 군포시',price:80000},{addr:'경기도 김포시 고촌',price:50000},{addr:'경기도 김포시 관내',price:45000},{addr:'경기도 남양주시',price:85000},{addr:'경기도 남양주시 청평읍',price:110000},{addr:'경기도 반월공단',price:80000},{addr:'경기도 발안 향남읍',price:95000},{addr:'경기도 부천시',price:60000},{addr:'경기도 성남시',price:80000},{addr:'경기도 성남시 분당구',price:80000},{addr:'경기도 수원 영통구',price:95000},{addr:'경기도 수원시',price:90000},{addr:'경기도 시화공단',price:75000},{addr:'경기도 시흥시',price:75000},{addr:'경기도 안산시',price:80000},{addr:'경기도 안산시 상록구',price:85000},{addr:'경기도 안성시',price:120000},{addr:'경기도 안양시',price:80000},{addr:'경기도 양주시',price:80000},{addr:'경기도 양평군',price:110000},{addr:'경기도 여주시',price:120000},{addr:'경기도 여주시 일죽면',price:120000},{addr:'경기도 연천군',price:100000},{addr:'경기도 오산시',price:95000},{addr:'경기도 용인시',price:100000},{addr:'경기도 용인시 기흥구',price:100000},{addr:'경기도 용인시 기흥구 신갈동',price:90000},{addr:'경기도 용인시 백암면',price:110000},{addr:'경기도 용인시 양지면',price:110000},{addr:'경기도 의왕시',price:80000},{addr:'경기도 의정부시',price:80000},{addr:'경기도 이천시',price:120000},{addr:'경기도 이천시 장호원읍',price:120000},{addr:'경기도 파주시',price:70000},{addr:'경기도 파주시 문산읍',price:75000},{addr:'경기도 파주시 법원읍',price:75000},{addr:'경기도 평택시',price:110000},{addr:'경기도 포천 일동, 이동',price:100000},{addr:'경기도 포천시',price:95000},{addr:'경기도 하남시',price:80000},{addr:'경기도 화성시',price:95000},{addr:'경기도 화성시 병점동',price:90000},
-  {addr:'경상남도 거제시',price:310000},{addr:'경상남도 거창군',price:270000},{addr:'경상남도 고성군',price:280000},{addr:'경상남도 남해군',price:310000},{addr:'경상남도 사천시',price:270000},{addr:'경상남도 산청군',price:270000},{addr:'경상남도 양산시',price:310000},{addr:'경상남도 의령군',price:270000},{addr:'경상남도 진주시',price:270000},{addr:'경상남도 창원시',price:280000},{addr:'경상남도 창원시 마산합포구',price:270000},{addr:'경상남도 창원시 진해구',price:280000},{addr:'경상남도 통영시',price:280000},{addr:'경상남도 하동군',price:270000},{addr:'경상남도 함양군',price:270000},{addr:'경상남도 합천군',price:270000},
-  {addr:'경상북도 경산시',price:250000},{addr:'경상북도 경주시',price:290000},{addr:'경상북도 고령군',price:270000},{addr:'경상북도 구미시',price:220000},{addr:'경상북도 김천시',price:230000},{addr:'경상북도 문경시',price:200000},{addr:'경상북도 밀양시',price:280000},{addr:'경상북도 봉화군',price:210000},{addr:'경상북도 상주시',price:210000},{addr:'경상북도 성주군',price:260000},{addr:'경상북도 영덕군',price:290000},{addr:'경상북도 영양군',price:260000},{addr:'경상북도 영주시',price:200000},{addr:'경상북도 영천시',price:270000},{addr:'경상북도 울진군',price:280000},{addr:'경상북도 창녕군',price:280000},{addr:'경상북도 청도군',price:270000},{addr:'경상북도 청송군',price:280000},{addr:'경상북도 칠곡군 왜관읍',price:240000},{addr:'경상북도 포항시',price:290000},
-  {addr:'광주광역시 광주시',price:260000},
-  {addr:'대구광역시 군위군',price:220000},{addr:'대구광역시 대구시',price:250000},
-  {addr:'대전광역시 대전시',price:160000},
-  {addr:'부산광역시 부산시',price:310000},
-  {addr:'서울특별시 강남구',price:80000},{addr:'서울특별시 강동구',price:80000},{addr:'서울특별시 강북구',price:80000},{addr:'서울특별시 강서구',price:55000},{addr:'서울특별시 관악구',price:80000},{addr:'서울특별시 광진구',price:80000},{addr:'서울특별시 구로구',price:65000},{addr:'서울특별시 금천구',price:65000},{addr:'서울특별시 노원구',price:80000},{addr:'서울특별시 도봉구',price:80000},{addr:'서울특별시 동대문구',price:80000},{addr:'서울특별시 동작구',price:75000},{addr:'서울특별시 마포구',price:70000},{addr:'서울특별시 서대문구',price:70000},{addr:'서울특별시 서초구',price:80000},{addr:'서울특별시 성동구',price:80000},{addr:'서울특별시 성북구',price:80000},{addr:'서울특별시 송파구',price:80000},{addr:'서울특별시 양천구',price:60000},{addr:'서울특별시 영등포구',price:70000},{addr:'서울특별시 용산구',price:70000},{addr:'서울특별시 은평구',price:70000},{addr:'서울특별시 종로구',price:80000},{addr:'서울특별시 중구',price:80000},{addr:'서울특별시 중랑구',price:80000},
-  {addr:'세종특별자치시 세종시',price:150000},
-  {addr:'울산광역시 울산시',price:300000},{addr:'울산광역시 울주군 언양읍',price:310000},
-  {addr:'인천광역시 강화 외곽',price:60000},{addr:'인천광역시 강화읍',price:55000},{addr:'인천광역시 검단',price:50000},{addr:'인천광역시 경서동',price:55000},{addr:'인천광역시 교동',price:80000},{addr:'인천광역시 남동공단',price:60000},{addr:'인천광역시 도화동',price:65000},{addr:'인천광역시 부평',price:65000},{addr:'인천광역시 소래',price:65000},{addr:'인천광역시 송도',price:65000},{addr:'인천광역시 월미도',price:65000},{addr:'인천광역시 인천공항',price:80000},{addr:'인천광역시 주안',price:65000},{addr:'인천광역시 청천동',price:60000},
-  {addr:'전라남도 강진군',price:290000},{addr:'전라남도 고흥군',price:290000},{addr:'전라남도 곡성군',price:270000},{addr:'전라남도 광양시',price:290000},{addr:'전라남도 구례군',price:270000},{addr:'전라남도 나주시',price:260000},{addr:'전라남도 남원시',price:250000},{addr:'전라남도 담양군',price:250000},{addr:'전라남도 목포시',price:270000},{addr:'전라남도 보성군',price:290000},{addr:'전라남도 순천시',price:270000},{addr:'전라남도 여수시',price:310000},{addr:'전라남도 영광군',price:250000},{addr:'전라남도 영암군',price:270000},{addr:'전라남도 완도군',price:340000},{addr:'전라남도 장성군',price:250000},{addr:'전라남도 장흥군',price:270000},{addr:'전라남도 진도군',price:340000},{addr:'전라남도 함평군',price:250000},{addr:'전라남도 해남군',price:310000},
-  {addr:'전라북도 고창군',price:240000},{addr:'전라북도 군산시',price:210000},{addr:'전라북도 김제시',price:210000},{addr:'전라북도 무주군',price:210000},{addr:'전라북도 부안군',price:210000},{addr:'전라북도 부안군 변산면',price:210000},{addr:'전라북도 순창군',price:240000},{addr:'전라북도 익산시',price:220000},{addr:'전라북도 임실군',price:240000},{addr:'전라북도 장수군',price:220000},{addr:'전라북도 전주시',price:220000},{addr:'전라북도 정읍시',price:210000},{addr:'전라북도 진안군',price:220000},
-  {addr:'충청남도 공주시',price:170000},{addr:'충청남도 금산군',price:190000},{addr:'충청남도 금산군 추부면',price:170000},{addr:'충청남도 논산시',price:180000},{addr:'충청남도 당진시',price:150000},{addr:'충청남도 보령시',price:170000},{addr:'충청남도 부여군',price:180000},{addr:'충청남도 서산시',price:160000},{addr:'충청남도 서천군',price:180000},{addr:'충청남도 아산시',price:140000},{addr:'충청남도 예산군',price:150000},{addr:'충청남도 천안시',price:140000},{addr:'충청남도 청양군',price:170000},{addr:'충청남도 태안군',price:170000},
-  {addr:'충청북도 괴산군',price:160000},{addr:'충청북도 단양군',price:170000},{addr:'충청북도 영동군',price:170000},{addr:'충청북도 옥천군',price:180000},{addr:'충청북도 음성군',price:140000},{addr:'충청북도 제천시',price:170000},{addr:'충청북도 증평군',price:140000},{addr:'충청북도 진천군',price:140000},{addr:'충청북도 청주시',price:150000},{addr:'충청북도 충주시',price:170000},
-];
-
-// 운임 폼 이벤트
-function onFreightChange() {
-  const val = document.querySelector('input[name="s-freight"]:checked').value;
-  document.getElementById('field-freight-addr').style.display = val==='용차' ? '' : 'none';
-}
-
-function onFreightSearch() {
-  const q = document.getElementById('freight-search').value.trim();
-  const sel = document.getElementById('freight-addr');
-  const filtered = q ? FREIGHT_DATA.filter(d => d.addr.includes(q)) : FREIGHT_DATA;
-  sel.innerHTML = '<option value="">-- 지역 선택 --</option>' +
-    filtered.map(d => `<option value="${d.price}">${d.addr} (${(d.price/1000).toFixed(0)}천원)</option>`).join('');
-  document.getElementById('freight-price-preview').textContent = '';
-}
-
-function onFreightAddrSelect() {
-  const price = parseInt(document.getElementById('freight-addr').value);
-  const preview = document.getElementById('freight-price-preview');
-  if (!price) { preview.textContent = ''; return; }
-  const w10 = Math.floor(price / 10000);
-  const w1  = Math.round((price % 10000) / 1000);
-  preview.textContent = `${price.toLocaleString()}원 → 10,000원×${w10} + 1,000원×${w1}`;
-}
-
-function onHomeDentFreightChange() {
-  const val = document.querySelector('input[name="h-freight"]:checked').value;
-  document.getElementById('field-h-freight-addr').style.display = val==='용차' ? '' : 'none';
-}
-
-function onHomeDentFreightSearch() {
-  const q = document.getElementById('h-freight-search').value.trim();
-  const sel = document.getElementById('h-freight-addr');
-  const filtered = q ? FREIGHT_DATA.filter(d => d.addr.includes(q)) : FREIGHT_DATA;
-  sel.innerHTML = '<option value="">-- 지역 선택 --</option>' +
-    filtered.map(d => `<option value="${d.price}">${d.addr} (${(d.price/1000).toFixed(0)}천원)</option>`).join('');
-  document.getElementById('h-freight-price-preview').textContent = '';
-}
-
-function onHomeDentFreightAddrSelect() {
-  const price = parseInt(document.getElementById('h-freight-addr').value);
-  const preview = document.getElementById('h-freight-price-preview');
-  if (!price) { preview.textContent = ''; return; }
-  const w10 = Math.floor(price / 10000);
-  const w1  = Math.round((price % 10000) / 1000);
-  preview.textContent = `${price.toLocaleString()}원 → 10,000원×${w10} + 1,000원×${w1}`;
-}
 let entries = [], entryId = 0, currentType = '경량랙';
 
 // ════════════════════════════════════════════════════════
@@ -1560,6 +1486,14 @@ function onSpeedFormChange() {
   const div   = document.getElementById('s-division').value;
   const thick = parseInt(document.getElementById('s-plywood').value);
   const color = document.getElementById('s-color').value;
+  const frameThick = document.getElementById('s-thick').value;
+
+  // 2T는 분리기둥(2단) 옵션 없음 — 숨기고, 선택돼 있었으면 기본값으로 되돌림
+  const heightSel = document.getElementById('s-height');
+  const splitOpts = [...heightSel.querySelectorAll('.split-opt')];
+  const wasSplitSelected = heightSel.value.startsWith('split');
+  splitOpts.forEach(o => o.style.display = frameThick === '200' ? 'none' : '');
+  if (frameThick === '200' && wasSplitSelected) heightSel.value = '1800';
 
   const isIndep  = div === '독립형';
   const isConn   = div === '연결형';
@@ -1904,6 +1838,89 @@ const ACC_PARTS = {
       { code:'2S56S000810', name:'공용/부속/평두머리볼트(M6)_대/N', spec:'-', qty:2 },
     ],
   },
+  'wheel-light': {
+    label:'바퀴세트 (경량랙)',
+    speedHome: false,
+    items:[
+      { code:'2S56C000027', name:'경량랙/부속/일반바퀴/N',     spec:'-', qty:2 },
+      { code:'2S56C000028', name:'경량랙/부속/브레이크바퀴/N', spec:'-', qty:2 },
+      { code:'2S56C000029', name:'경량랙/부속/바퀴브라켓/N',   spec:'-', qty:4 },
+      { code:'2S56C000030', name:'경량랙/부속/육각볼트/N',     spec:'-', qty:4 },
+      { code:'2S56C000031', name:'경량랙/부속/플렌지너트/N',   spec:'-', qty:4 },
+    ],
+  },
+  'wheel-speed-large': {
+    label:'바퀴세트 대형(3인치) (스피드랙)',
+    speedHome: true,
+    items:[
+      { code:'2S56S000010',  name:'공용/부속/플랜지너트(M6)_대/N',              spec:'-',   qty:16 },
+      { code:'2S56C3535110', name:'스피드랙/부속/바퀴브라켓(2,3인치바퀴용)/N', spec:'-',   qty:4  },
+      { code:'2S56C000025',  name:'공용/부속/일반바퀴/N',                       spec:'3인치', qty:2  },
+      { code:'2S56C000026',  name:'공용/부속/브레이크바퀴/N',                   spec:'3인치', qty:2  },
+      { code:'3T56S0000102', name:'스피드랙/부속/바퀴브라켓용볼트/N',           spec:'-',   qty:16 },
+    ],
+  },
+  'wheel-speed-small': {
+    label:'바퀴세트 소형(2인치) (스피드랙)',
+    speedHome: true,
+    items:[
+      { code:'2S56S000010',  name:'공용/부속/플랜지너트(M6)_대/N',              spec:'-',   qty:16 },
+      { code:'2S56C3535110', name:'스피드랙/부속/바퀴브라켓(2,3인치바퀴용)/N', spec:'-',   qty:4  },
+      { code:'2S56C000023',  name:'공용/부속/일반바퀴/N',                       spec:'2인치', qty:2  },
+      { code:'2S56C000024',  name:'공용/부속/브레이크바퀴/N',                   spec:'2인치', qty:2  },
+      { code:'3T56S0000102', name:'스피드랙/부속/바퀴브라켓용볼트/N',           spec:'-',   qty:16 },
+    ],
+  },
+  'wheel-home-small': {
+    label:'바퀴세트 소형(2인치) (홈던트)',
+    speedHome: true,
+    items:[
+      { code:'2S56S0360231', name:'홈던트/부속/바퀴브라켓(2,3인치바퀴용)/N', spec:'-',   qty:4 },
+      { code:'2S56C000023',  name:'공용/부속/일반바퀴/N',                   spec:'2인치', qty:2 },
+      { code:'2S56C000024',  name:'공용/부속/브레이크바퀴/N',               spec:'2인치', qty:2 },
+    ],
+  },
+  'wheel-home-large': {
+    label:'바퀴세트 대형(3인치) (홈던트)',
+    speedHome: true,
+    items:[
+      { code:'2S56S0360231', name:'홈던트/부속/바퀴브라켓(2,3인치바퀴용)/N', spec:'-', qty:4 },
+      { code:'2S56C000025',  name:'공용/부속/일반바퀴/N',                   spec:'-', qty:2 },
+      { code:'2S56C000026',  name:'공용/부속/브레이크바퀴/N',               spec:'-', qty:2 },
+    ],
+  },
+  'drawer3-home-w': {
+    label:'3단서랍장세트 (홈던트, 화이트)',
+    speedHome: true,
+    items:[
+      { code:'3T56S000004',  name:'공용/부속/플랜지너트(M4)_소/N',           spec:'M4',         qty:12 },
+      { code:'2S56W1371221', name:'공용/부속/서랍장손잡이/W',                spec:'137*12*21',  qty:3  },
+      { code:'3C14A715497',  name:'공용/6T/합판/(189615_백색)',              spec:'715*497*6T', qty:3  },
+      { code:'3T56S000013',  name:'공용/부속/평두머리볼트(M4)_서랍장용/N',   spec:'M4*6',       qty:12 },
+      { code:'3S56W73417512',name:'홈던트/부속/서랍장(정면판)/W',            spec:'734*175*12.5', qty:3 },
+      { code:'3S56W50016031',name:'홈던트/부속/서랍장(측면판)/W',            spec:'500*160*31', qty:6  },
+      { code:'3S56W71716016',name:'홈던트/부속/서랍장(후면판)/W',            spec:'717*160*16', qty:3  },
+      { code:'3S13W200050V2',name:'홈던트/120/레일받침(우)/W',               spec:'500',        qty:3  },
+      { code:'3S13W100050V2',name:'홈던트/120/레일받침(좌)/W',               spec:'500',        qty:3  },
+      { code:'3T56S000015',  name:'공용/부속/둥근머리볼트(M4)_서랍장용/B',   spec:'M4*5/검정',  qty:6  },
+    ],
+  },
+  'drawer3-home-b': {
+    label:'3단서랍장세트 (홈던트, 블랙)',
+    speedHome: true,
+    items:[
+      { code:'3T56S000004',  name:'공용/부속/플랜지너트(M4)_소/N',           spec:'M4',         qty:12 },
+      { code:'2S56B1371221', name:'공용/부속/서랍장손잡이/B',                spec:'137*12*21',  qty:3  },
+      { code:'3C14A715497',  name:'공용/6T/합판/(189615_백색)',              spec:'715*497*6T', qty:3  },
+      { code:'3T56S000013',  name:'공용/부속/평두머리볼트(M4)_서랍장용/N',   spec:'M4*6',       qty:12 },
+      { code:'3S56B73417512',name:'홈던트/부속/서랍장(정면판)/B',            spec:'734*175*12.5', qty:3 },
+      { code:'3S56B50016031',name:'홈던트/부속/서랍장(측면판)/B',            spec:'500*160*31', qty:6  },
+      { code:'3S56B71716016',name:'홈던트/부속/서랍장(후면판)/B',            spec:'717*160*16', qty:3  },
+      { code:'3S13B200050V2',name:'홈던트/120/레일받침(우)/B',               spec:'500',        qty:3  },
+      { code:'3S13B100050V2',name:'홈던트/120/레일받침(좌)/B',               spec:'500',        qty:3  },
+      { code:'3T56S000015',  name:'공용/부속/둥근머리볼트(M4)_서랍장용/B',   spec:'M4*5/검정',  qty:6  },
+    ],
+  },
 };
 
 function updateAccOptions() {
@@ -1916,11 +1933,11 @@ function updateAccOptions() {
     if (!opt.value) return;
     const v = opt.value;
     if (isLightMedium) {
-      opt.style.display = (v === 'hammer') ? '' : 'none';
+      opt.style.display = (v === 'hammer' || v === 'wheel-light') ? '' : 'none';
     } else if (isSpeed) {
-      opt.style.display = (v.startsWith('curtain-home') || v.startsWith('clip-home') || v.startsWith('mesh-home') || v === 'level-home-6') ? 'none' : '';
+      opt.style.display = (v.startsWith('curtain-home') || v.startsWith('clip-home') || v.startsWith('mesh-home') || v === 'level-home-6' || v === 'wheel-light' || v.startsWith('wheel-home') || v.startsWith('drawer3-home')) ? 'none' : '';
     } else if (isHome) {
-      opt.style.display = (v.startsWith('curtain-speed') || v.startsWith('clip-speed') || v.startsWith('mesh-speed') || v.startsWith('level-speed')) ? 'none' : '';
+      opt.style.display = (v.startsWith('curtain-speed') || v.startsWith('clip-speed') || v.startsWith('mesh-speed') || v.startsWith('level-speed') || v === 'wheel-light' || v.startsWith('wheel-speed')) ? 'none' : '';
     } else {
       opt.style.display = '';
     }
@@ -2076,42 +2093,49 @@ function addSpeedRack() {
   if (!clearRackEntriesIfTypeChanged('스피드랙')) return;
   const division    = document.getElementById('s-division').value;
   const color       = document.getElementById('s-color').value;
-  const height      = parseInt(document.getElementById('s-height').value);
+  const frameThick  = document.getElementById('s-thick').value;
+  const T           = speedTables(frameThick);
+  const heightRaw   = document.getElementById('s-height').value;
+  const isSingle    = !heightRaw.startsWith('split');
+  const height      = isSingle ? parseInt(heightRaw) : parseInt(heightRaw.slice(5));
   const width       = parseInt(document.getElementById('s-width').value);
   const shelves     = parseInt(document.getElementById('s-shelves').value);
   const qty         = parseInt(document.getElementById('s-qty').value);
   const plywoodThick= parseInt(document.getElementById('s-plywood').value);
   const errEl       = document.getElementById('errorMsg');
 
-  if (!SPEED_기둥[color][height] || !SPEED_받침[color][width]) { errEl.classList.add('show'); return; }
+  const heightOk = isSingle
+    ? !!T.기둥[color]?.[height]
+    : !!(SPEED_기둥조합[height] && T.기둥[color]?.[SPEED_기둥조합[height][0]] && T.기둥[color]?.[SPEED_기둥조합[height][1]]);
+  if (!heightOk || !T.받침[color]?.[width]) { errEl.classList.add('show'); return; }
 
   if (division === '독립형') {
     const depth = parseInt(document.getElementById('s-depth').value);
-    if (!depth || !SPEED_받침[color][depth]) { errEl.classList.add('show'); return; }
+    if (!depth || !T.받침[color]?.[depth]) { errEl.classList.add('show'); return; }
     const pCode = PLYWOOD[plywoodThick]?.[`${width}*${depth}`];
     if (!pCode) { errEl.classList.add('show'); return; }
     errEl.classList.remove('show');
-    entries.push({id:entryId++,rackType:'스피드랙',division,color,height,width,depth,shelves,qty,plywoodThick,plywoodDepth:depth,plywoodCode:pCode});
+    entries.push({id:entryId++,rackType:'스피드랙',division,color,frameThick,height,isSingle,width,depth,shelves,qty,plywoodThick,plywoodDepth:depth,plywoodCode:pCode});
 
   } else if (division === '연결형') {
     const connDepth = parseInt(document.getElementById('s-conn-depth').value);
-    if (!connDepth || !SPEED_연결받침[color][connDepth]) { errEl.classList.add('show'); return; }
+    if (!connDepth || !T.연결받침[color]?.[connDepth]) { errEl.classList.add('show'); return; }
     const pCode = PLYWOOD[plywoodThick]?.[`${width}*${connDepth}`];
     if (!pCode) { errEl.classList.add('show'); return; }
     errEl.classList.remove('show');
-    entries.push({id:entryId++,rackType:'스피드랙',division,color,height,width,connDepth,shelves,qty,plywoodThick,plywoodDepth:connDepth,plywoodCode:pCode});
+    entries.push({id:entryId++,rackType:'스피드랙',division,color,frameThick,height,isSingle,width,connDepth,shelves,qty,plywoodThick,plywoodDepth:connDepth,plywoodCode:pCode});
 
   } else {
-    // 행거형
+    // 행거형 (행거받침·행거봉은 두께 구분 없이 공용)
     const hangerDepth   = parseInt(document.getElementById('s-depth').value);
     const hangerShelves = parseInt(document.getElementById('s-hanger-shelves').value);
-    if (!hangerDepth || !SPEED_받침[color][hangerDepth]) { errEl.classList.add('show'); return; }
+    if (!hangerDepth || !T.받침[color]?.[hangerDepth]) { errEl.classList.add('show'); return; }
     if (!hangerShelves || hangerShelves >= shelves) { errEl.classList.add('show'); return; }
     if (!SPEED_행거봉[width]) { errEl.classList.add('show'); return; }
     const pCode = PLYWOOD[plywoodThick]?.[`${width}*${hangerDepth}`];
     if (!pCode) { errEl.classList.add('show'); return; }
     errEl.classList.remove('show');
-    entries.push({id:entryId++,rackType:'스피드랙',division,color,height,width,depth:hangerDepth,hangerShelves,shelves,qty,plywoodThick,plywoodDepth:hangerDepth,plywoodCode:pCode});
+    entries.push({id:entryId++,rackType:'스피드랙',division,color,frameThick,height,isSingle,width,depth:hangerDepth,hangerShelves,shelves,qty,plywoodThick,plywoodDepth:hangerDepth,plywoodCode:pCode});
   }
   renderAll();
 }
@@ -2230,6 +2254,16 @@ const SINGLE_PARTS = (() => {
   ['W','B'].forEach(c => Object.entries(SPEED_연결받침[c]).forEach(([spec, code]) =>
     add(code, `스피드랙/160/연결받침/${c==='W'?'화이트':'블랙'}`, spec, ['스피드랙'], '연결받침')
   ));
+  // 스피드랙 2T 기둥/받침/연결받침 (화이트만 존재)
+  Object.entries(SPEED_기둥_200.W).forEach(([spec, code]) =>
+    add(code, '스피드랙/200/기둥/화이트', spec, ['스피드랙'], '기둥')
+  );
+  Object.entries(SPEED_받침_200.W).forEach(([spec, code]) =>
+    add(code, '스피드랙/200/받침/화이트', spec, ['스피드랙'], '받침')
+  );
+  Object.entries(SPEED_연결받침_200.W).forEach(([spec, code]) =>
+    add(code, '스피드랙/200/연결받침/화이트', spec, ['스피드랙'], '연결받침')
+  );
   // 스피드랙 행거받침
   ['W','B'].forEach(c => Object.entries(SPEED_행거받침[c]).forEach(([spec, hr]) => {
     if (hr.single) add(hr.single, `스피드랙/160/행거받침/${c==='W'?'화이트':'블랙'}`, spec, ['스피드랙'], '행거받침');
@@ -2238,6 +2272,9 @@ const SINGLE_PARTS = (() => {
   // 스피드랙 안전좌
   add('5S56W110001', '스피드랙/부속/안전좌/화이트', '-', ['스피드랙'], '안전좌');
   add('5S56B110001', '스피드랙/부속/안전좌/블랙',   '-', ['스피드랙'], '안전좌');
+  // 스피드랙 기둥연결브라켓 (분리기둥용)
+  add(SPEED_브라켓.W, '스피드랙/부속/기둥연결브라켓/화이트', '-', ['스피드랙'], '기둥연결브라켓');
+  add(SPEED_브라켓.B, '스피드랙/부속/기둥연결브라켓/블랙',   '-', ['스피드랙'], '기둥연결브라켓');
 
   // 홈던트 기둥
   ['W','B'].forEach(c => Object.entries(HOMEDENT_기둥[c]).forEach(([spec, code]) =>
@@ -2380,7 +2417,7 @@ function addSinglePart() {
 const LIGHT_ORDER=['기둥','전면빔','공용받침','안전좌','안전핀','우레탄망치','기타부속','선반'];
 const MEDIUM_ORDER=['기둥','전면빔','상부받침','선반받침','안전좌','안전핀','우레탄망치','기타부속','선반'];
 // 순서: 기둥 → 받침류 → 안전좌 → 나머지부속(행거받침,행거봉) → 합판
-const SPEED_ORDER=['기둥','받침','연결받침','행거받침(좌)','행거받침(우)','행거받침','보강대','안전좌','우레탄망치','기타부속','행거봉','합판'];
+const SPEED_ORDER=['기둥','받침','연결받침','행거받침(좌)','행거받침(우)','행거받침','보강대','안전좌','우레탄망치','기타부속','기둥연결브라켓','행거봉','합판'];
 
 // 합판 품번별 박스당 수량
 const PLYWOOD_BOX = {
@@ -2416,6 +2453,7 @@ function calcParts() {
   const hB={}; HOMEDENT_ORDER.forEach(l=>hB[l]={});
   const accB={}; // 미사용
   const accOnlyB={}; // 랙 없이 부속만 있을 때
+  ['기둥','받침','안전좌','안전핀','우레탄망치','기타부속','합판'].forEach(l => accOnlyB[l] = {});
   let hasL=false, hasM=false, hasS=false, hasH=false, hasAcc=false;
 
   function add(buckets, label, part, qty) {
@@ -2452,36 +2490,55 @@ function calcParts() {
     } else if (e.rackType==='스피드랙') {
       hasS = true;
       const cl   = e.color==='W' ? '화이트' : '블랙';
+      const thickTag = e.frameThick === '200' ? '200' : '160';
+      const T = speedTables(e.frameThick || '160');
       // 행거형도 독립형과 동일하게 기둥 4개
       const pile = e.division==='연결형' ? 2 : 4;
 
-      // 기둥
-      const pc = SPEED_기둥[e.color][e.height];
-      if (pc) add(sB,'기둥',{code:pc,name:`스피드랙/160/기둥/${cl}`,spec:String(e.height)},pile*mul);
+      // 기둥: 단일 높이면 해당 기둥, 분리(2단)면 두 종류 + 기둥연결브라켓
+      if (e.isSingle !== false) {
+        const pc = T.기둥[e.color]?.[e.height];
+        if (pc) add(sB,'기둥',{code:pc,name:`스피드랙/${thickTag}/기둥/${cl}`,spec:String(e.height)},pile*mul);
+      } else {
+        const combo = SPEED_기둥조합[e.height];
+        if (combo) {
+          const [h1, h2] = combo;
+          const c1 = T.기둥[e.color]?.[h1];
+          const c2 = T.기둥[e.color]?.[h2];
+          if (h1 === h2) {
+            if (c1) add(sB,'기둥',{code:c1,name:`스피드랙/${thickTag}/기둥/${cl}`,spec:String(h1)},pile*2*mul);
+          } else {
+            if (c1) add(sB,'기둥',{code:c1,name:`스피드랙/${thickTag}/기둥/${cl}`,spec:String(h1)},pile*mul);
+            if (c2) add(sB,'기둥',{code:c2,name:`스피드랙/${thickTag}/기둥/${cl}`,spec:String(h2)},pile*mul);
+          }
+        }
+        const bCode = SPEED_브라켓[e.color];
+        if (bCode) add(sB,'기둥연결브라켓',{code:bCode,name:`스피드랙/부속/기둥연결브라켓/${cl}`,spec:'-'},pile*mul);
+      }
 
       // 받침(가로) — 행거형은 (단수-행거단수)×2, 나머지는 단수×2
-      const wc = SPEED_받침[e.color][e.width];
+      const wc = T.받침[e.color]?.[e.width];
       const garo = e.shelves;
-      if (wc) add(sB,'받침',{code:wc,name:`스피드랙/160/받침/${cl}`,spec:String(e.width)},garo*2*mul);
+      if (wc) add(sB,'받침',{code:wc,name:`스피드랙/${thickTag}/받침/${cl}`,spec:String(e.width)},garo*2*mul);
 
       if (e.division==='독립형') {
-        const dc = SPEED_받침[e.color][e.depth];
-        if (dc) add(sB,'받침',{code:dc,name:`스피드랙/160/받침/${cl}`,spec:String(e.depth)},e.shelves*2*mul);
+        const dc = T.받침[e.color]?.[e.depth];
+        if (dc) add(sB,'받침',{code:dc,name:`스피드랙/${thickTag}/받침/${cl}`,spec:String(e.depth)},e.shelves*2*mul);
 
       } else if (e.division==='연결형') {
-        const cc = SPEED_연결받침[e.color][e.connDepth];
-        if (cc) add(sB,'연결받침',{code:cc,name:`스피드랙/160/연결받침/${cl}`,spec:String(e.connDepth)},e.shelves*mul);
+        const cc = T.연결받침[e.color]?.[e.connDepth];
+        if (cc) add(sB,'연결받침',{code:cc,name:`스피드랙/${thickTag}/연결받침/${cl}`,spec:String(e.connDepth)},e.shelves*mul);
 
       } else {
         // 행거형
         // 일반 받침(세로): (단수 - 행거단수) × 2
         const normalShelves = e.shelves - e.hangerShelves;
-        const dc = SPEED_받침[e.color][e.depth];
+        const dc = T.받침[e.color]?.[e.depth];
         if (dc && normalShelves > 0) {
-          add(sB,'받침',{code:dc,name:`스피드랙/160/받침/${cl}`,spec:String(e.depth)},normalShelves*2*mul);
+          add(sB,'받침',{code:dc,name:`스피드랙/${thickTag}/받침/${cl}`,spec:String(e.depth)},normalShelves*2*mul);
         }
 
-        // 행거받침: 400은 좌/우 각 행거단수개, 500/600은 행거단수×2개
+        // 행거받침: 400은 좌/우 각 행거단수개, 500/600은 행거단수×2개 (두께 구분 없이 공용)
         const hr = SPEED_행거받침[e.color][e.depth];
         if (hr) {
           if (hr.single) {
@@ -2575,10 +2632,21 @@ function calcParts() {
   }
 
   // 2nd pass: 부속품 처리 (랙 버킷 확정 후)
+  function unifiedSlotFor(e, HAMMER_CODE) {
+    if (e.code === HAMMER_CODE) return '우레탄망치';
+    if (e.name.includes('안전핀')) return '안전핀';
+    if (e.name.includes('안전좌')) return '안전좌';
+    if (e.name.includes('기둥연결브라켓')) return '기타부속';
+    if (e.name.includes('기둥')) return '기둥';
+    if (e.name.includes('합판')) return '합판';
+    if (e.name.includes('선반')) return '합판'; // 선반=합판과 같은 자리 취급
+    if (e.name.includes('보강대')) return '받침';
+    if (/받침|전면빔/.test(e.name)) return '받침';
+    return '기타부속';
+  }
   for (const e of entries) {
     if (e.rackType !== '부속품') continue;
     const HAMMER_CODE = '2S560CH0248';
-    const BOGANG_CODES = new Set(Object.keys(PLYWOOD).length ? [] : []); // 아래서 정의
     const isBo = e.name.includes('보강대');
     const isPlywood = e.name.includes('합판');
     const slot = (e.code === HAMMER_CODE) ? '우레탄망치' : isBo ? '보강대' : isPlywood ? '합판' : '기타부속';
@@ -2591,8 +2659,7 @@ function calcParts() {
     } else if (hasH) {
       add(hB, slot, { code:e.code, name:e.name, spec:e.spec }, e.qty);
     } else {
-      if (!accOnlyB[e.code]) accOnlyB[e.code] = { code:e.code, name:e.name, spec:e.spec, qty:0 };
-      accOnlyB[e.code].qty += e.qty;
+      add(accOnlyB, unifiedSlotFor(e, HAMMER_CODE), { code:e.code, name:e.name, spec:e.spec }, e.qty);
     }
   }
 
@@ -2610,7 +2677,7 @@ function calcParts() {
   };
 
   const rows=[];
-  function pushSection(header, buckets, order) {
+  function pushSection(header, buckets, order, allOptional) {
     rows.push({label:header, isHeader:true});
     const optional=['연결받침','행거받침(좌)','행거받침(우)','행거받침','보강대','행거봉','기둥연결브라켓','우레탄망치','기타부속','합판'];
     // 원래 랙별 카테고리들을 통일 슬롯 기준으로 재배치 (슬롯 내부는 원래 상대 순서 유지)
@@ -2619,7 +2686,7 @@ function calcParts() {
     UNIFIED_ORDER.forEach(slot => {
       (bySlot[slot]||[]).forEach(label => {
         const items = Object.values(buckets[label]||{});
-        if (!items.length && optional.includes(label)) return;
+        if (!items.length && (allOptional || optional.includes(label))) return;
         if (!items.length) rows.push({label,code:'-',name:'-',spec:'-',qty:0});
         else items.forEach((item,i)=>rows.push({label:i===0?label:'',code:item.code,name:item.name,spec:item.spec,qty:item.qty}));
       });
@@ -2630,113 +2697,18 @@ function calcParts() {
   if (hasH) pushSection('── 홈던트 ──', hB, HOMEDENT_ORDER);
   if (hasS) pushSection('── 스피드랙 ──', sB, SPEED_ORDER);
   // 랙 없이 부속만 있는 경우
-  if (hasAcc && !hasL && !hasM && !hasS && !hasH && Object.keys(accOnlyB).length) {
-    rows.push({label:'── 부속품 ──', isHeader:true});
-    Object.values(accOnlyB).forEach(item =>
-      rows.push({label:'부속', code:item.code, name:item.name, spec:item.spec, qty:item.qty})
-    );
+  if (hasAcc && !hasL && !hasM && !hasS && !hasH && Object.values(accOnlyB).some(b => Object.keys(b).length)) {
+    pushSection('── 부속품 ──', accOnlyB, UNIFIED_ORDER, true);
   }
   return { rows, sB, hB, hasS, hasH };
 }
 
-function calcFreight(buckets, freightRadioName, frameLabels) {
-  const freightType = document.querySelector(`input[name="${freightRadioName}"]:checked`)?.value || '택배';
-  const FREIGHT_CODE_10K = '7Y990OO000004';
-  const FREIGHT_CODE_1K  = '7Y990OO000002';
-  const FREIGHT_CODE_PKG = '7Y990OO000003';
-
-  // 합판 박스 수
-  let plywoodBoxes = 0;
-  Object.values(buckets['합판']||{}).forEach(item => {
-    const perBox = PLYWOOD_BOX[item.code] || 1;
-    plywoodBoxes += Math.ceil(item.qty / perBox);
-  });
-
-  // 프레임 수
-  let frameCount = 0;
-  frameLabels.forEach(label => { Object.values(buckets[label]||{}).forEach(item => { frameCount += item.qty; }); });
-
-  if (freightType === '택배') {
-    const qty = plywoodBoxes + Math.ceil(frameCount / 30);
-    return { type:'택배', boxes:plywoodBoxes, frames:frameCount, items:[{ code:FREIGHT_CODE_PKG, qty }] };
-  } else if (freightType === '파렛') {
-    return { type:'파렛', boxes:plywoodBoxes, frames:frameCount, items:[{ code:FREIGHT_CODE_PKG, qty:10 }] };
-  } else {
-    const addrId = freightRadioName === 's-freight' ? 'freight-addr' : 'h-freight-addr';
-    const price = parseInt(document.getElementById(addrId).value) || 0;
-    const qty10k = Math.floor(price / 10000);
-    const qty1k  = Math.round((price % 10000) / 1000);
-    const items = [];
-    if (qty10k > 0) items.push({ code:FREIGHT_CODE_10K, qty:qty10k });
-    if (qty1k  > 0) items.push({ code:FREIGHT_CODE_1K,  qty:qty1k  });
-    return { type:'용차', boxes:plywoodBoxes, frames:frameCount, price, items };
-  }
-}
-
-function renderFreightSummary(sB, hB, hasS, hasH) {
-  const el = document.getElementById('freightSummary');
-  const parts = [];
-
-  const frameLabels = ['기둥','받침','연결받침','행거받침(좌)','행거받침(우)','행거받침','행거봉'];
-
-  if (hasS) {
-    const f = calcFreight(sB, 's-freight', frameLabels);
-    let detail, cost;
-    if (f.type === '택배') {
-      const totalBoxes = f.boxes + Math.ceil(f.frames/30);
-      detail = `합판 ${f.boxes}박스 + 프레임 ${f.frames}개(${Math.ceil(f.frames/30)}박스)`;
-      cost = `${totalBoxes}박스`;
-    } else if (f.type === '파렛') {
-      detail = '파렛 운송';
-      cost = '60,000원';
-    } else {
-      detail = '용차 운송';
-      cost = f.price ? `${f.price.toLocaleString()}원` : '지역 미선택';
-    }
-    parts.push(`<div style="display:flex;flex-direction:column;gap:4px;padding-right:20px;border-right:1px solid var(--border)">
-      <span style="font-size:0.72rem;font-weight:700;color:var(--text2);letter-spacing:0.06em">스피드랙 운임 (${f.type})</span>
-      <span style="font-size:0.82rem;color:var(--text)">${detail}</span>
-      <span style="font-size:0.82rem;color:var(--accent2);font-weight:600">${cost}</span>
-    </div>`);
-  }
-
-  if (hasH) {
-    const f = calcFreight(hB, 'h-freight', frameLabels);
-    let detail, cost;
-    if (f.type === '택배') {
-      const totalBoxes = f.boxes + Math.ceil(f.frames/30);
-      detail = `합판 ${f.boxes}박스 + 프레임 ${f.frames}개(${Math.ceil(f.frames/30)}박스)`;
-      cost = `${totalBoxes}박스`;
-    } else if (f.type === '파렛') {
-      detail = '파렛 운송';
-      cost = '60,000원';
-    } else {
-      detail = '용차 운송';
-      cost = f.price ? `${f.price.toLocaleString()}원` : '지역 미선택';
-    }
-    parts.push(`<div style="display:flex;flex-direction:column;gap:4px">
-      <span style="font-size:0.72rem;font-weight:700;color:var(--text2);letter-spacing:0.06em">홈던트 운임 (${f.type})</span>
-      <span style="font-size:0.82rem;color:var(--text)">${detail}</span>
-      <span style="font-size:0.82rem;color:var(--accent2);font-weight:600">${cost}</span>
-    </div>`);
-  }
-
-  if (parts.length) {
-    el.style.display = 'flex';
-    el.innerHTML = `<div style="font-size:0.72rem;font-weight:700;color:var(--text2);letter-spacing:0.06em;width:100%;margin-bottom:8px">📦 예상 운임비</div>` + parts.join('');
-  } else {
-    el.style.display = 'none';
-    el.innerHTML = '';
-  }
-}
-
 function renderResult() {
-  const { rows, sB, hB, hasS, hasH } = getFinalRows();
+  const { rows } = getFinalRows();
   document.getElementById('resultBody').innerHTML = rows.map(r => {
     if (r.isHeader) return `<tr style="background:var(--surface2)"><td colspan="5" style="padding:8px 14px;font-size:0.72rem;font-weight:700;letter-spacing:0.1em;color:var(--text2);border-top:2px solid var(--border)">${r.label}</td></tr>`;
     return `<tr><td class="td-label">${r.label}</td><td class="td-name">${r.name}</td><td class="td-code">${r.code}</td><td class="td-spec">${r.spec}</td><td class="td-qty">${r.qty>0?`<input type="number" min="0" value="${r.qty}" style="width:64px;text-align:right;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:3px 6px" onchange="updateQty('${r.code}', this.value)">`:'-'}</td></tr>`;
   }).join('');
-  renderFreightSummary(sB, hB, hasS, hasH);
 }
 
 // ════════════════════════════════════════════════════════
@@ -2930,7 +2902,7 @@ async function loadSavedOrders() {
         <div class="order-item" onclick="openOrderModal('${o.id}')">
           <div class="order-info">
             <div class="order-name">${o.recipient_name || '(수취인 없음)'} ${o.phone ? '· ' + o.phone : ''}</div>
-            <div class="order-sub">${o.address || ''} ${o.zipcode ? '(' + o.zipcode + ')' : ''} ${o.freight_type ? '· ' + o.freight_type : ''} ${o.memo ? '· ' + o.memo : ''}</div>
+            <div class="order-sub">${o.address || ''} ${o.zipcode ? '(' + o.zipcode + ')' : ''} ${o.freight_type ? '· ' + (['파렛','용차'].includes(o.freight_type) ? `<span style="color:var(--danger)">${o.freight_type}</span>` : o.freight_type) : ''} ${o.memo ? '· ' + o.memo : ''}</div>
             ${isMaster ? `<div class="order-user">👤 ${o.profiles?.name || o.profiles?.email || ''}</div>` : ''}
           </div>
           <button class="order-erp${o.erp_submitted?' on':''}" onclick="event.stopPropagation();toggleErp('${o.id}', ${!!o.erp_submitted})">${o.erp_submitted?'✅ ERP완료':'ERP 미입력'}</button>
@@ -2967,7 +2939,7 @@ async function openOrderModal(id) {
       <div><span style="color:var(--text2)">핸드폰</span><br><strong>${data.phone||'-'}</strong></div>
       <div><span style="color:var(--text2)">우편번호</span><br><strong>${data.zipcode||'-'}</strong></div>
       <div><span style="color:var(--text2)">주소</span><br><strong>${data.address||'-'}</strong></div>
-      <div><span style="color:var(--text2)">운임</span><br><strong>${data.freight_type||'-'}</strong></div>
+      <div><span style="color:var(--text2)">운임</span><br><strong${(data.freight_type==='파렛'||data.freight_type==='용차')?' style="color:var(--danger)"':''}>${data.freight_type||'-'}</strong></div>
       ${data.memo ? `<div><span style="color:var(--text2)">메모</span><br><strong>${data.memo}</strong></div>` : ''}
       ${isMaster ? `<div><span style="color:var(--text2)">저장자</span><br><strong>${data.profiles?.name||data.profiles?.email||'-'}</strong></div>` : ''}
     </div>
@@ -3092,7 +3064,7 @@ async function loadByAccount() {
                 <div class="order-item" onclick="openOrderModal('${o.id}')">
                   <div class="order-info">
                     <div class="order-name">${o.recipient_name || '(수취인 없음)'} ${o.phone ? '· ' + o.phone : ''}</div>
-                    <div class="order-sub">${o.address || ''} ${o.zipcode ? '(' + o.zipcode + ')' : ''} ${o.freight_type ? '· ' + o.freight_type : ''} ${o.memo ? '· ' + o.memo : ''}</div>
+                    <div class="order-sub">${o.address || ''} ${o.zipcode ? '(' + o.zipcode + ')' : ''} ${o.freight_type ? '· ' + (['파렛','용차'].includes(o.freight_type) ? `<span style="color:var(--danger)">${o.freight_type}</span>` : o.freight_type) : ''} ${o.memo ? '· ' + o.memo : ''}</div>
                   </div>
                   <button class="order-erp${o.erp_submitted?' on':''}" onclick="event.stopPropagation();toggleErp('${o.id}', ${!!o.erp_submitted})">${o.erp_submitted?'✅ ERP완료':'ERP 미입력'}</button>
                   <button class="order-del" onclick="event.stopPropagation();deleteOrder('${o.id}')">삭제</button>
