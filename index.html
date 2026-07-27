@@ -932,6 +932,7 @@ function addHomeDent() {
   if (blockIfDrawerConflict(false)) return;
   const division = document.getElementById('h-division').value;
   const color    = document.getElementById('h-color').value;
+  if (blockIfColorConflict(color)) return;
   const height   = parseInt(document.getElementById('h-height').value);
   const width    = parseInt(document.getElementById('h-width').value);
   const shelves  = parseInt(document.getElementById('h-shelves').value);
@@ -2021,6 +2022,34 @@ function blockIfDrawerConflict(addingDrawer) {
   return false;
 }
 
+// ── 스피드랙/홈던트 색상 혼입 방지 ──
+function detectColorFromName(name) {
+  if (/블랙|흑색/.test(name) || name.endsWith('/B')) return 'B';
+  if (/화이트|백색/.test(name) || name.endsWith('/W')) return 'W';
+  return null;
+}
+function getOrderColor() {
+  for (const e of entries) {
+    if ((e.rackType === '스피드랙' || e.rackType === '홈던트') && e.color) return e.color;
+  }
+  for (const e of entries) {
+    if (e.rackType === '부속품') {
+      const c = detectColorFromName(e.name);
+      if (c) return c;
+    }
+  }
+  return null;
+}
+function blockIfColorConflict(newColor) {
+  if (!newColor) return false;
+  const existing = getOrderColor();
+  if (existing && existing !== newColor) {
+    alert('수주 한 건에 색상 혼입 불가합니다');
+    return true;
+  }
+  return false;
+}
+
 function addAccessory() {
   const key = document.getElementById('acc-select').value;
   const qty = parseInt(document.getElementById('acc-qty').value);
@@ -2042,6 +2071,10 @@ function addAccessory() {
     const specKey = document.getElementById('acc-spec1').value;
     const spec = c.specs.find(s => s.key === specKey);
     if (!spec) return;
+    if (spec.items) {
+      const itemColor = spec.items.map(item => detectColorFromName(item.name)).find(Boolean);
+      if (blockIfColorConflict(itemColor)) return;
+    }
     // 하위 품목만 추가 (세트코드 자체는 부품 목록에 넣지 않음)
     if (spec.items) {
       spec.items.forEach(item => {
@@ -2059,6 +2092,8 @@ function addAccessory() {
   }
 
   const p = ACC_PARTS[key];
+  const pItemColor = p.items.map(item => detectColorFromName(item.name)).find(Boolean);
+  if (blockIfColorConflict(pItemColor)) return;
   p.items.forEach(item => {
     entries.push({
       id: entryId++, rackType: '부속품',
@@ -2116,6 +2151,7 @@ function addSpeedRack() {
   if (blockIfDrawerConflict(false)) return;
   const division    = document.getElementById('s-division').value;
   const color       = document.getElementById('s-color').value;
+  if (blockIfColorConflict(color)) return;
   const frameThick  = document.getElementById('s-thick').value;
   const T           = speedTables(frameThick);
   const heightRaw   = document.getElementById('s-height').value;
@@ -2428,6 +2464,7 @@ function addSinglePart() {
   if (!idx || !sel._filtered || !qty || qty < 1) return;
   if (blockIfDrawerConflict(false)) return;
   const p = sel._filtered[parseInt(idx)];
+  if (blockIfColorConflict(detectColorFromName(p.name))) return;
   entries.push({
     id: entryId++, rackType: '부속품',
     code: p.code, name: p.name, spec: p.spec,
@@ -2813,7 +2850,7 @@ async function doSignup() {
   const { error } = await sb.auth.signUp({ email, password: pw, options: { data: { name } } });
   if (error) { err.textContent = error.message; return; }
   err.style.color = 'var(--accent2)';
-  err.textContent = '가입 완료! 이메일 인증 후 로그인해주세요.';
+  err.textContent = '가입 신청 완료! 관리자 승인 후 로그인할 수 있어요.';
 }
 
 // ── 로그아웃 ──
@@ -2844,7 +2881,25 @@ function showTab(tab) {
 sb.auth.onAuthStateChange(async (event, session) => {
   if (session?.user) {
     currentUser = session.user;
-    isMaster    = currentUser.email === MASTER_EMAIL;
+    const { data: profile } = await sb.from('profiles').select('is_master, approved, disabled').eq('id', currentUser.id).single();
+    isMaster = currentUser.email === MASTER_EMAIL || !!profile?.is_master;
+
+    if (profile?.disabled) {
+      document.getElementById('appWrap').style.display = 'none';
+      document.getElementById('authWrap').style.display = '';
+      showAuthBlockMessage('계정이 비활성화되었습니다. 관리자에게 문의하세요.');
+      await sb.auth.signOut();
+      return;
+    }
+    if (!isMaster && !profile?.approved) {
+      document.getElementById('appWrap').style.display = 'none';
+      document.getElementById('authWrap').style.display = '';
+      showAuthBlockMessage('가입 승인 대기중입니다. 관리자 승인 후 이용할 수 있어요.');
+      await sb.auth.signOut();
+      return;
+    }
+
+    hideAuthBlockMessage();
     document.getElementById('authWrap').style.display = 'none';
     document.getElementById('appWrap').style.display  = '';
     document.getElementById('userInfo').innerHTML =
@@ -2861,6 +2916,23 @@ sb.auth.onAuthStateChange(async (event, session) => {
     document.getElementById('appWrap').style.display  = 'none';
   }
 });
+
+function showAuthBlockMessage(msg) {
+  let el = document.getElementById('authBlockMsg');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'authBlockMsg';
+    el.style.cssText = 'max-width:380px;margin:0 auto 16px;padding:14px 16px;background:#3a1f1f;border:1px solid var(--danger);border-radius:8px;color:#ffb4b4;font-size:0.85rem;text-align:center';
+    const authWrap = document.getElementById('authWrap');
+    authWrap.insertBefore(el, authWrap.firstChild);
+  }
+  el.textContent = msg;
+  el.style.display = '';
+}
+function hideAuthBlockMessage() {
+  const el = document.getElementById('authBlockMsg');
+  if (el) el.style.display = 'none';
+}
 
 // ── renderAll에 저장카드 표시 연동 ──
 function updateSaveCard() {
@@ -3127,7 +3199,9 @@ async function loadMembers() {
           <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">이메일</th>
           <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">가입일</th>
           <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">구분</th>
+          <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">승인상태</th>
           <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">권한 관리</th>
+          <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">계정 관리</th>
         </tr>
       </thead>
       <tbody>
@@ -3138,6 +3212,14 @@ async function loadMembers() {
             <td style="padding:10px 12px;color:var(--text2)">${m.created_at ? new Date(m.created_at).toLocaleDateString('ko-KR') : '-'}</td>
             <td style="padding:10px 12px">${m.is_master ? '<span style="color:var(--accent);font-weight:700">마스터</span>' : '일반'}</td>
             <td style="padding:10px 12px">
+              ${m.disabled
+                ? '<span style="color:var(--danger);font-weight:700">비활성화됨</span>'
+                : m.approved
+                  ? '<span style="color:var(--accent2)">승인됨</span>'
+                  : '<span style="color:var(--danger);font-weight:700">승인 대기</span>'
+              }
+            </td>
+            <td style="padding:10px 12px">
               ${m.id === currentUser.id
                 ? '<span style="color:var(--text2);font-size:0.75rem">(본인)</span>'
                 : m.is_master
@@ -3145,11 +3227,24 @@ async function loadMembers() {
                   : `<button class="btn btn-copy" style="padding:5px 10px;font-size:0.75rem" onclick="toggleMaster('${m.id}', true, '${(m.name||m.email||'').replace(/'/g,"")}')">마스터로 지정</button>`
               }
             </td>
+            <td style="padding:10px 12px">
+              ${m.id === currentUser.id ? '' : `
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  ${!m.approved && !m.disabled ? `<button class="btn btn-copy" style="padding:5px 10px;font-size:0.75rem" onclick="toggleApproved('${m.id}', true, '${(m.name||m.email||'').replace(/'/g,"")}')">승인</button>` : ''}
+                  ${m.approved && !m.disabled ? `<button class="btn" style="padding:5px 10px;font-size:0.75rem" onclick="toggleApproved('${m.id}', false, '${(m.name||m.email||'').replace(/'/g,"")}')">승인 취소</button>` : ''}
+                  ${m.disabled
+                    ? `<button class="btn btn-copy" style="padding:5px 10px;font-size:0.75rem" onclick="toggleDisabled('${m.id}', false, '${(m.name||m.email||'').replace(/'/g,"")}')">복구</button>`
+                    : `<button class="btn" style="padding:5px 10px;font-size:0.75rem;color:var(--danger);border-color:var(--danger)" onclick="toggleDisabled('${m.id}', true, '${(m.name||m.email||'').replace(/'/g,"")}')">탈퇴 처리</button>`
+                  }
+                  <button class="btn" style="padding:5px 10px;font-size:0.75rem" onclick="resetPassword('${m.id}', '${(m.name||m.email||'').replace(/'/g,"")}')">비밀번호 초기화</button>
+                </div>
+              `}
+            </td>
           </tr>
         `).join('')}
       </tbody>
     </table>
-    <p style="color:var(--text2);font-size:0.75rem;margin-top:10px">※ 권한 변경은 해당 계정이 다시 로그인(또는 새로고침 후 재접속)해야 반영됩니다.</p>
+    <p style="color:var(--text2);font-size:0.75rem;margin-top:10px">※ 권한/승인 변경은 해당 계정이 다시 로그인(또는 새로고침 후 재접속)해야 반영됩니다.</p>
   `;
 }
 
@@ -3162,6 +3257,34 @@ async function toggleMaster(id, makeMaster, name) {
   showToast(makeMaster ? '마스터로 지정 완료!' : '마스터 권한 해제 완료!');
   loadMembers();
 }
+
+async function toggleApproved(id, approve, name) {
+  const msg = approve ? `${name} 님의 가입을 승인할까요? 승인해야 로그인할 수 있어요.`
+                      : `${name} 님의 승인을 취소할까요? 다시 로그인할 수 없게 됩니다.`;
+  if (!confirm(msg)) return;
+  const { error } = await sb.from('profiles').update({ approved: approve }).eq('id', id);
+  if (error) { showToast('변경 실패: ' + error.message); return; }
+  showToast(approve ? '승인 완료!' : '승인 취소 완료!');
+  loadMembers();
+}
+
+async function toggleDisabled(id, disable, name) {
+  const msg = disable ? `${name} 님을 탈퇴 처리할까요? 더 이상 로그인할 수 없게 됩니다. (저장된 주문 기록은 남습니다)`
+                      : `${name} 님의 계정을 다시 활성화할까요?`;
+  if (!confirm(msg)) return;
+  const { error } = await sb.from('profiles').update({ disabled: disable }).eq('id', id);
+  if (error) { showToast('변경 실패: ' + error.message); return; }
+  showToast(disable ? '탈퇴 처리 완료!' : '계정 복구 완료!');
+  loadMembers();
+}
+
+async function resetPassword(id, name) {
+  if (!confirm(`${name} 님의 비밀번호를 초기화할까요?\n초기화되면 비밀번호는 asdf1020** 로 바뀝니다.`)) return;
+  const { error } = await sb.rpc('admin_reset_password', { target_user_id: id });
+  if (error) { showToast('초기화 실패: ' + error.message); return; }
+  showToast(`비밀번호가 asdf1020** 로 초기화되었습니다.`);
+}
 </script>
+
 </body>
 </html>
