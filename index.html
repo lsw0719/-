@@ -929,6 +929,7 @@ function updateHomeDentPlywoodPreview() {
 
 function addHomeDent() {
   if (!clearRackEntriesIfTypeChanged('홈던트')) return;
+  if (blockIfDrawerConflict(false)) return;
   const division = document.getElementById('h-division').value;
   const color    = document.getElementById('h-color').value;
   const height   = parseInt(document.getElementById('h-height').value);
@@ -2002,11 +2003,30 @@ function onAccSpecChange() {
   }
 }
 
+// ── 3단서랍장세트는 단독 주문이어야 함 ──
+const DRAWER_KEYS = ['drawer3-home-w', 'drawer3-home-b'];
+function hasDrawerEntry() {
+  return entries.some(e => e.rackType === '부속품' && e.name.includes('서랍장'));
+}
+function blockIfDrawerConflict(addingDrawer) {
+  if (addingDrawer) {
+    if (entries.length > 0 && !hasDrawerEntry()) {
+      alert('3단서랍장세트는 다른 품목과 함께 담을 수 없어요.\n기존 항목을 먼저 저장하거나 "전체 삭제" 후 서랍장만 따로 추가해주세요.');
+      return true;
+    }
+  } else if (hasDrawerEntry()) {
+    alert('지금 3단서랍장세트가 담겨 있어요. 서랍장은 단독 주문이어야 하니,\n먼저 저장하거나 "전체 삭제" 후 다른 품목을 추가해주세요.');
+    return true;
+  }
+  return false;
+}
+
 function addAccessory() {
   const key = document.getElementById('acc-select').value;
   const qty = parseInt(document.getElementById('acc-qty').value);
   const preview = document.getElementById('acc-preview');
   if (!key || !qty || qty < 1) return;
+  if (blockIfDrawerConflict(DRAWER_KEYS.includes(key))) return;
 
   // 경량/중량랙만 있을 때 망치 외 추가 차단
   const hasOnlyLightMedium = entries.some(e => e.rackType === '경량랙' || e.rackType === '중량랙')
@@ -2054,6 +2074,7 @@ function addAccessory() {
 
 function addMediumRack() {
   if (!clearRackEntriesIfTypeChanged('중량랙')) return;
+  if (blockIfDrawerConflict(false)) return;
   const division = document.getElementById('m-division').value;
   const height   = parseInt(document.getElementById('m-height').value);
   const width    = parseInt(document.getElementById('m-width').value);
@@ -2074,6 +2095,7 @@ function addMediumRack() {
 
 function addLightRack() {
   if (!clearRackEntriesIfTypeChanged('경량랙')) return;
+  if (blockIfDrawerConflict(false)) return;
   const division=document.getElementById('l-division').value;
   const height=parseInt(document.getElementById('l-height').value);
   const width=parseInt(document.getElementById('l-width').value);
@@ -2091,6 +2113,7 @@ function addLightRack() {
 
 function addSpeedRack() {
   if (!clearRackEntriesIfTypeChanged('스피드랙')) return;
+  if (blockIfDrawerConflict(false)) return;
   const division    = document.getElementById('s-division').value;
   const color       = document.getElementById('s-color').value;
   const frameThick  = document.getElementById('s-thick').value;
@@ -2403,6 +2426,7 @@ function addSinglePart() {
   const preview = document.getElementById('single-preview');
   const idx = sel.value;
   if (!idx || !sel._filtered || !qty || qty < 1) return;
+  if (blockIfDrawerConflict(false)) return;
   const p = sel._filtered[parseInt(idx)];
   entries.push({
     id: entryId++, rackType: '부속품',
