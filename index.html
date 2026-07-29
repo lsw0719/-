@@ -1107,6 +1107,7 @@ function normalizeOrderText(text) {
   const breakBefore = [
     /\d+\s*보강대/g,
     new RegExp(NB + '정면커튼', 'g'),
+    new RegExp(NB + '사이드커튼', 'g'),
     /커튼봉(?!\S)/g,
     new RegExp(NB + '메쉬보드', 'g'),
     new RegExp(NB + '소형조립망치', 'g'),
@@ -1136,6 +1137,10 @@ function parseOrderBlock(rawText) {
     curtainQty:0, meshQty:0, meshColor:null, meshDims:null,
     tierAddQty:0, tierAddDims:null,
     raildividerQty:0, raildividerSize:null,
+    wheelQty:0, wheelSize:null,
+    sideCurtainQty:0, sideCurtainDims:null,
+    sidebarQty:0, sidebarDims:null,
+    drawerQty:0,
     name:'', phone:'', zip:'', address:'', memo:'',
     unrecognized:[],
   };
@@ -1232,9 +1237,15 @@ function parseOrderBlock(rawText) {
       const m = line.match(/보강대\D*?(\d+)\s*(?:개|세트)/);
       result.bogangQty = m ? +m[1] : 1;
     }
-    if (/정면커튼|커튼봉|커튼세트/.test(line)) {
+    if (/정면커튼|커튼봉/.test(line) && !/사이드커튼/.test(line)) {
       const m = line.match(/(\d+)\s*(?:개|세트)/);
       result.curtainQty = m ? +m[1] : 1;
+    }
+    if (/사이드커튼/.test(line)) {
+      const dm = line.match(/(\d{2,4})\s*[\*x×]\s*(\d{2,4})/);
+      const m = line.match(/(\d+)\s*(?:개|세트)/);
+      result.sideCurtainQty = m ? +m[1] : 1;
+      if (dm) result.sideCurtainDims = { w:+dm[1], h:+dm[2] };
     }
     if (/메쉬보드/.test(line)) {
       if (/화이트|백색/.test(line)) result.meshColor = 'W';
@@ -1251,7 +1262,15 @@ function parseOrderBlock(rawText) {
       if (dm) result.tierAddDims = { w:+dm[1], d:+dm[2] };
     }
     if (/사이드안전바/.test(line)) {
-      result.unrecognized.push(line);
+      const dm = line.match(/(\d{2,4})\s*[\*x×]\s*(\d{2,4})/);
+      const m = line.match(/(\d+)\s*(?:개|세트)/);
+      result.sidebarQty = m ? +m[1] : 1;
+      if (dm) result.sidebarDims = { w:+dm[1], d:+dm[2] };
+      else result.unrecognized.push(line);
+    }
+    if (/서랍/.test(line)) {
+      const m = line.match(/(\d+)\s*(?:개|세트)/);
+      result.drawerQty = m ? +m[1] : 1;
     }
     if (/레일디바이더세트/.test(line)) {
       const sizes = [300,400,500,600,800];
@@ -1261,6 +1280,12 @@ function parseOrderBlock(rawText) {
       result.raildividerQty = m ? +m[1] : 1;
       if (size) result.raildividerSize = size;
       else result.unrecognized.push(line);
+    }
+    if (/바퀴/.test(line)) {
+      const m = line.match(/(\d+)\s*(?:개|세트)/);
+      result.wheelQty = m ? +m[1] : 1;
+      if (/3\s*인치|대형/.test(line)) result.wheelSize = 'large';
+      else if (/2\s*인치|소형/.test(line)) result.wheelSize = 'small';
     }
   });
 
@@ -1273,7 +1298,7 @@ function parseOrderBlock(rawText) {
     /\d{3,4}\s*[\*x×]\s*\d{3,4}\s*[\*x×]\s*\d{3,4}/,
     /\d{2,4}\s*[\*x×]\s*\d{2,4}/,
     /망치/, /후크/, /조절좌/, /L\s*형\s*플레이트/i, /고정클립|클립/, /보강대/,
-    /정면커튼|커튼봉|커튼세트/, /메쉬보드/, /단추가/, /사이드안전바/, /레일디바이더/,
+    /정면커튼|커튼봉|커튼세트/, /사이드커튼/, /메쉬보드/, /단추가/, /사이드안전바/, /레일디바이더/, /바퀴/, /서랍/,
   ];
   specLines.forEach(line => {
     const recognized = RECOGNIZED_PATTERNS.some(re => re.test(line));
@@ -1348,8 +1373,8 @@ function applyParsedOrder(r) {
   if (r.rackType === '경량랙') {
     switchType('경량랙');
     r.rackDims.forEach(d => {
-      const division = d.division || r.division;
-      if (division) document.getElementById('l-division').value = division;
+      const division = d.division || r.division || '독립형';
+      document.getElementById('l-division').value = division;
       if (d.width && LIGHT_PARTS.전면빔[d.width]) document.getElementById('l-width').value = d.width;
       if (d.depth && LIGHT_PARTS.공용받침[d.depth]) document.getElementById('l-depth').value = d.depth;
       if (d.height && LIGHT_PARTS.기둥[d.height]) document.getElementById('l-height').value = d.height;
@@ -1361,8 +1386,8 @@ function applyParsedOrder(r) {
   } else if (r.rackType === '중량랙') {
     switchType('중량랙');
     r.rackDims.forEach(d => {
-      const division = d.division || r.division;
-      if (division) document.getElementById('m-division').value = division;
+      const division = d.division || r.division || '독립형';
+      document.getElementById('m-division').value = division;
       if (d.width && MEDIUM_PARTS.전면빔[d.width]) document.getElementById('m-width').value = d.width;
       if (d.depth && MEDIUM_PARTS.상부받침[d.depth]) document.getElementById('m-depth').value = d.depth;
       if (d.height && MEDIUM_PARTS.기둥[d.height]) document.getElementById('m-height').value = d.height;
@@ -1373,10 +1398,11 @@ function applyParsedOrder(r) {
     });
   } else if (r.rackType === '스피드랙') {
     switchType('스피드랙');
-    if (r.color) document.getElementById('s-color').value = r.color;
+    document.getElementById('s-color').value = r.color || 'W';
+    document.getElementById('s-thick').value = '160'; onSpeedFormChange();
     r.rackDims.forEach(d => {
-      const division = d.division || r.division;
-      if (division) document.getElementById('s-division').value = division;
+      const division = d.division || r.division || '독립형';
+      document.getElementById('s-division').value = division;
       if (d.height) document.getElementById('s-height').value = d.height;
       if (d.width) document.getElementById('s-width').value = d.width;
       onSpeedFormChange();
@@ -1388,18 +1414,17 @@ function applyParsedOrder(r) {
       }
       if (d.shelves) document.getElementById('s-shelves').value = d.shelves;
       document.getElementById('s-qty').value = d.qty || 1;
-      if (r.plywoodThick && [...document.getElementById('s-plywood').options].some(o=>o.value==String(r.plywoodThick))) {
-        document.getElementById('s-plywood').value = r.plywoodThick;
-      }
+      const sPlyThick = (r.plywoodThick && [...document.getElementById('s-plywood').options].some(o=>o.value==String(r.plywoodThick))) ? r.plywoodThick : 9;
+      document.getElementById('s-plywood').value = sPlyThick;
       const n = entries.length; addSpeedRack();
       if (entries.length > n) applied.push(`스피드랙 ${divNow} ${d.width}*${d.depth}*${d.height} ${d.shelves||''}단${d.hangerShelves?'('+d.hangerShelves+'행거)':''}`);
     });
   } else if (r.rackType === '홈던트') {
     switchType('홈던트');
-    if (r.color) document.getElementById('h-color').value = r.color;
+    document.getElementById('h-color').value = r.color || 'W';
     r.rackDims.forEach(d => {
-      const division = d.division || r.division;
-      if (division) document.getElementById('h-division').value = division;
+      const division = d.division || r.division || '독립형';
+      document.getElementById('h-division').value = division;
       if (d.height) document.getElementById('h-height').value = d.height;
       if (d.width) document.getElementById('h-width').value = d.width;
       onHomeDentFormChange();
@@ -1411,9 +1436,8 @@ function applyParsedOrder(r) {
       }
       if (d.shelves) document.getElementById('h-shelves').value = d.shelves;
       document.getElementById('h-qty').value = d.qty || 1;
-      if (r.plywoodThick && [...document.getElementById('h-plywood').options].some(o=>o.value==String(r.plywoodThick))) {
-        document.getElementById('h-plywood').value = r.plywoodThick;
-      }
+      const hPlyThick = (r.plywoodThick && [...document.getElementById('h-plywood').options].some(o=>o.value==String(r.plywoodThick))) ? r.plywoodThick : 9;
+      document.getElementById('h-plywood').value = hPlyThick;
       const n = entries.length; addHomeDent();
       if (entries.length > n) applied.push(`홈던트 ${divNow} ${d.width}*${d.depth}*${d.height} ${d.shelves||''}단${d.hangerShelves?'('+d.hangerShelves+'행거)':''}`);
     });
@@ -1468,6 +1492,16 @@ function applyParsedOrder(r) {
     addAccessory();
     applied.push(`레일디바이더세트(${r.raildividerSize}mm) ${r.raildividerQty}개`);
   }
+  if (r.wheelQty > 0) {
+    let wheelKey;
+    if (r.rackType === '스피드랙') wheelKey = r.wheelSize === 'large' ? 'wheel-speed-large' : 'wheel-speed-small';
+    else if (r.rackType === '홈던트') wheelKey = r.wheelSize === 'large' ? 'wheel-home-large' : 'wheel-home-small';
+    else wheelKey = 'wheel-light';
+    document.getElementById('acc-select').value = wheelKey;
+    document.getElementById('acc-qty').value = r.wheelQty;
+    addAccessory();
+    applied.push(`바퀴세트 ${r.wheelQty}개`);
+  }
 
   // 보강대 (단품 DB에서 색상+길이로 찾아서 직접 추가)
   if (r.bogangQty > 0) {
@@ -1502,6 +1536,25 @@ function applyParsedOrder(r) {
     }
   } else if (r.curtainQty > 0) {
     r.unrecognized.push('커튼세트 (랙 규격 미확인 또는 홈던트 아님)');
+  }
+
+  // 사이드커튼 (직접 지정한 규격으로 매칭)
+  if (r.sideCurtainQty > 0 && r.sideCurtainDims) {
+    const specKey = `${r.sideCurtainDims.w}*${r.sideCurtainDims.h}`;
+    document.getElementById('acc-select').value = 'curtain-side';
+    onAccSelect();
+    const specSel = document.getElementById('acc-spec1');
+    if ([...specSel.options].some(o => o.value === specKey)) {
+      specSel.value = specKey;
+      onAccSpecChange();
+      document.getElementById('acc-qty').value = r.sideCurtainQty;
+      addAccessory();
+      applied.push(`사이드커튼세트(${specKey}) ${r.sideCurtainQty}개`);
+    } else {
+      r.unrecognized.push(`사이드커튼세트 규격(${specKey}) 못 찾음 — 직접 선택 필요`);
+    }
+  } else if (r.sideCurtainQty > 0) {
+    r.unrecognized.push('사이드커튼세트 (규격 인식 실패) — 직접 선택 필요');
   }
 
   // 메쉬보드 (색상+규격으로 매칭, 홈던트/스피드랙 모두 지원)
@@ -1569,6 +1622,32 @@ function applyParsedOrder(r) {
     }
   }
 
+  // 사이드안전바세트 (받침 조합: 가로받침1 + 세로받침2)
+  if (r.sidebarQty > 0 && r.sidebarDims) {
+    const { w, d } = r.sidebarDims;
+    const color = r.color || 'W';
+    const colorWord = color === 'B' ? '블랙' : '화이트';
+    const rt = r.rackType || '홈던트';
+    const widthPart = SINGLE_PARTS.find(p => p.cat === '받침' && p.rack.includes(rt) && p.spec === String(w) && p.name.endsWith('/' + colorWord));
+    const depthPart = SINGLE_PARTS.find(p => p.cat === '받침' && p.rack.includes(rt) && p.spec === String(d) && p.name.endsWith('/' + colorWord));
+    if (widthPart && depthPart) {
+      entries.push({ id: entryId++, rackType:'부속품', code:widthPart.code, name:widthPart.name, spec:widthPart.spec, qty: 1 * r.sidebarQty });
+      entries.push({ id: entryId++, rackType:'부속품', code:depthPart.code, name:depthPart.name, spec:depthPart.spec, qty: 2 * r.sidebarQty });
+      applied.push(`사이드안전바세트(${w}*${d}) ${r.sidebarQty}세트`);
+    } else {
+      r.unrecognized.push(`사이드안전바세트 규격(${w}*${d}) 코드 못 찾음`);
+    }
+  }
+
+  // 3단서랍장세트 (색상만 인식하면 바로 추가)
+  if (r.drawerQty > 0) {
+    const key = r.color === 'B' ? 'drawer3-home-b' : 'drawer3-home-w';
+    document.getElementById('acc-select').value = key;
+    document.getElementById('acc-qty').value = r.drawerQty;
+    addAccessory();
+    applied.push(`3단서랍장세트(${r.color === 'B' ? '블랙' : '화이트'}) ${r.drawerQty}개`);
+  }
+
   if (r.name)    document.getElementById('recipientName').value  = r.name;
   if (r.phone)   document.getElementById('recipientPhone').value = r.phone;
   if (r.zip)     document.getElementById('recipientZip').value   = r.zip;
@@ -1602,7 +1681,10 @@ async function submitQuickEntry() {
     ['recipientName','recipientPhone','recipientZip','recipientAddr','orderMemo'].forEach(id => document.getElementById(id).value = '');
 
     const r = parseOrderBlock(blocks[i]);
-    if (!r.rackType && !r.plywoodDims.length) {
+    const hasAnyAction = r.rackType || r.plywoodDims.length || r.drawerQty || r.wheelQty ||
+      r.hammerQty || r.hookQty || r.levelQty || r.lplateQty || r.clipQty || r.bogangQty ||
+      r.curtainQty || r.sideCurtainQty || r.meshQty || r.tierAddQty || r.raildividerQty || r.sidebarQty;
+    if (!hasAnyAction) {
       report.push({ n:i+1, ok:false, msg:'랙 종류/합판 규격을 인식하지 못해 건너뜀', name:r.name || '(이름 미상)' });
       continue;
     }
@@ -1639,7 +1721,7 @@ async function submitQuickEntry() {
   renderAll();
 
   const okCount = report.filter(x=>x.ok).length;
-  resultEl.style.color = okCount === report.length ? 'var(--accent2)' : 'var(--danger)';
+  resultEl.style.color = 'var(--text)';
   const single = report.length === 1;
   resultEl.innerHTML = `<strong>${okCount} / ${report.length}건 저장 완료</strong><br>` +
     report.map(x => {
@@ -3352,6 +3434,8 @@ async function openOrderModal(id) {
   window._modalAddr = data.address || '';
   window._modalName = data.recipient_name || '';
   window._modalMemo = data.memo || '';
+  window._modalEntries = data.entries || [];
+  window._modalFreight = data.freight_type || '택배';
   const editable = window._modalIsOwner || isMaster;
   mc.innerHTML = `
     <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:14px">
@@ -3384,8 +3468,9 @@ async function openOrderModal(id) {
       <button class="btn btn-copy"  onclick="copyModalCol('code')">📋 품번 복사</button>
       <button class="btn btn-copy2" onclick="copyModalCol('qty')">🔢 수량 복사</button>
       ${editable ? `<button class="btn-save" style="padding:8px 16px;font-size:0.82rem" onclick="saveModalQty()">💾 수량 수정 저장</button>` : ''}
+      ${editable ? `<button class="btn" style="padding:8px 16px;font-size:0.82rem" onclick="loadOrderIntoInput()">✏️ 입력 화면으로 불러와서 수정</button>` : ''}
     </div>
-    ${editable ? `<div style="font-size:0.75rem;color:var(--text2);margin-bottom:8px">✏️ ${window._modalIsOwner ? '본인이 저장한 항목이라' : '마스터 계정이라'} 수량을 수정할 수 있어요.</div>` : ''}
+    ${editable ? `<div style="font-size:0.75rem;color:var(--text2);margin-bottom:8px">✏️ ${window._modalIsOwner ? '본인이 저장한 항목이라' : '마스터 계정이라'} 수량을 수정할 수 있어요. 큰 수정이 필요하면 "입력 화면으로 불러와서 수정"을 눌러 처음부터 다시 구성한 뒤 저장하세요 (기존 저장 건은 그대로 남아있으니 필요하면 직접 삭제해주세요).</div>` : ''}
     <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
       <thead><tr style="background:var(--surface2);border-bottom:2px solid var(--accent)">
         <th style="padding:8px 12px;text-align:left;font-size:0.72rem;color:var(--text2)">부품</th>
@@ -3437,6 +3522,24 @@ async function saveModalQty() {
 
 function closeModal() {
   document.getElementById('orderModal').style.display = 'none';
+}
+
+function loadOrderIntoInput() {
+  if (!confirm('현재 입력 화면에 있는 내용은 지워지고, 이 주문 내용을 불러옵니다. 계속할까요?')) return;
+  entries = JSON.parse(JSON.stringify(window._modalEntries || []));
+  qtyOverrides = {};
+  // entryId가 겹치지 않도록 재부여
+  entries.forEach(e => { e.id = entryId++; });
+  document.getElementById('recipientName').value  = window._modalName || '';
+  document.getElementById('recipientPhone').value = window._modalPhone || '';
+  document.getElementById('recipientZip').value   = window._modalZip || '';
+  document.getElementById('recipientAddr').value  = window._modalAddr || '';
+  document.getElementById('recipientFreight').value = window._modalFreight || '택배';
+  document.getElementById('orderMemo').value = window._modalMemo || '';
+  closeModal();
+  showTab('input');
+  renderAll();
+  showToast('입력 화면으로 불러왔습니다. 수정 후 저장해주세요.');
 }
 
 // ── 삭제 ──
