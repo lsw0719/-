@@ -161,6 +161,8 @@
   .order-item .order-del:hover { background: var(--danger); color: #fff; }
   .order-item .order-erp { background: transparent; border: 1px solid var(--border); color: var(--text2); border-radius: 5px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; white-space: nowrap; }
   .order-item .order-erp.on { background: var(--accent2); border-color: var(--accent2); color: #fff; }
+  .filter-btn { background: var(--surface2); border: 1px solid var(--border); color: var(--text2); border-radius: 6px; padding: 6px 12px; font-size: 0.78rem; cursor: pointer; }
+  .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   .tab-btn { padding: 7px 20px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); font-family: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
   .tab-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
   #viewHome > div > div:hover { transform: translateY(-3px); border-color: var(--accent); }</style>
@@ -202,7 +204,6 @@
     <button class="tab-btn" id="tabInput" onclick="showTab('input')">입력</button>
     <button class="tab-btn" id="tabQuickEntry" onclick="showTab('quickEntry')">텍스트 등록</button>
     <button class="tab-btn" id="tabSaved" onclick="showTab('saved')">저장 목록</button>
-    <button class="tab-btn" id="tabByAccount" style="display:none" onclick="showTab('byAccount')">계정별</button>
     <button class="tab-btn" id="tabMembers" style="display:none" onclick="showTab('members')">회원 목록</button>
     <button id="btnLogout" onclick="doLogout()">로그아웃</button>
   </div>
@@ -230,11 +231,6 @@
     </div>
   </div>
   <div id="homeMasterRow" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px">
-    <div id="homeByAccountCard" onclick="showTab('byAccount')" style="display:none;cursor:pointer;flex:1;min-width:200px;padding:28px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center;transition:transform .15s">
-      <div style="font-size:2.2rem;margin-bottom:8px">👥</div>
-      <div style="font-weight:700;font-size:1.05rem">계정별</div>
-      <div style="color:var(--text2);font-size:0.8rem;margin-top:4px">계정별 저장 목록 (마스터)</div>
-    </div>
     <div id="homeMembersCard" onclick="showTab('members')" style="display:none;cursor:pointer;flex:1;min-width:200px;padding:28px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center;transition:transform .15s">
       <div style="font-size:2.2rem;margin-bottom:8px">🧑‍🤝‍🧑</div>
       <div style="font-weight:700;font-size:1.05rem">회원 목록</div>
@@ -546,6 +542,11 @@
         <option value="wheel-home-large">홈던트/부속/바퀴세트(대형,3인치)/N</option>
         <option value="drawer3-home-w">홈던트/부속/3단서랍장세트/W</option>
         <option value="drawer3-home-b">홈던트/부속/3단서랍장세트/B</option>
+        <option value="raildivider-home-300">홈던트/부속/레일디바이더세트/N (300mm)</option>
+        <option value="raildivider-home-400">홈던트/부속/레일디바이더세트/N (400mm)</option>
+        <option value="raildivider-home-500">홈던트/부속/레일디바이더세트/N (500mm)</option>
+        <option value="raildivider-home-600">홈던트/부속/레일디바이더세트/N (600mm)</option>
+        <option value="raildivider-home-800">홈던트/부속/레일디바이더세트/N (800mm)</option>
       </select>
     </div>
     <!-- 규격 선택 (커튼류 선택 시 표시) -->
@@ -628,14 +629,18 @@
 <div id="viewSaved" style="display:none">
   <h1>📋 저장 목록</h1>
   <p class="subtitle" id="savedSubtitle"></p>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin-top:14px">
+    <div style="display:flex;gap:6px;align-items:center">
+      <span style="font-size:0.78rem;color:var(--text2);margin-right:2px">ERP</span>
+      <button class="filter-btn active" id="erpFilterBtn-all" onclick="setErpFilter('all')">전체</button>
+      <button class="filter-btn" id="erpFilterBtn-done" onclick="setErpFilter('done')">완료</button>
+      <button class="filter-btn" id="erpFilterBtn-pending" onclick="setErpFilter('pending')">미입력</button>
+    </div>
+    <div id="accountGroupToggleWrap" style="display:none;align-items:center;gap:6px">
+      <button class="filter-btn" id="accountGroupBtn" onclick="toggleAccountGrouping()">👥 계정별로 보기</button>
+    </div>
+  </div>
   <div id="savedList" style="margin-top:16px"></div>
-</div>
-
-<!-- 계정별 탭 (마스터 전용) -->
-<div id="viewByAccount" style="display:none">
-  <h1>👥 계정별 저장 목록</h1>
-  <p class="subtitle" id="byAccountSubtitle"></p>
-  <div id="byAccountList" style="margin-top:16px"></div>
 </div>
 
 <!-- 회원 목록 탭 (마스터 전용) -->
@@ -1063,21 +1068,23 @@ function switchType(type) {
 // 줄바꿈 없이 붙어있는 텍스트도 항목별로 분리되도록 전처리
 function normalizeOrderText(text) {
   let t = text;
+  const NB = '(?<![가-힣])'; // 직전이 한글이 아닐 때만 끊기 (합성어 중간 분리 방지)
   const breakBefore = [
     /\d+\s*보강대/g,
-    /정면커튼/g,
+    new RegExp(NB + '정면커튼', 'g'),
     /커튼봉(?!\S)/g,
-    /메쉬보드/g,
-    /소형조립망치/g,
-    /우레탄망치/g,
-    /리버후크/g,
-    /(?<!정면)(?<!리버서블C)후크/g,
-    /조절좌/g,
+    new RegExp(NB + '메쉬보드', 'g'),
+    new RegExp(NB + '소형조립망치', 'g'),
+    new RegExp(NB + '우레탄망치', 'g'),
+    new RegExp(NB + '리버후크', 'g'),
+    new RegExp(NB + '후크', 'g'),
+    new RegExp(NB + '조절좌', 'g'),
     /L\s*형\s*플레이트/g,
-    /사이드안전바/g,
-    /수취인정보/g,
-    /배송지/g,
-    /메모\s/g,
+    new RegExp(NB + '사이드안전바', 'g'),
+    new RegExp(NB + '레일디바이더세트', 'g'),
+    new RegExp(NB + '수취인정보', 'g'),
+    new RegExp(NB + '배송지', 'g'),
+    new RegExp(NB + '메모\\s', 'g'),
   ];
   breakBefore.forEach(re => { t = t.replace(re, m => '\n' + m); });
   return t;
@@ -1089,16 +1096,17 @@ function parseOrderBlock(rawText) {
   const result = {
     rackType:null, division:null, color:null, plywoodThick:null,
     rackDims:[], plywoodDims:[],
-    hammerQty:0, hookQty:0, levelQty:0, lplateQty:0,
+    hammerQty:0, hookQty:0, levelQty:0, lplateQty:0, clipQty:0,
     bogangQty:0, bogangSpec:null,
     curtainQty:0, meshQty:0, meshColor:null, meshDims:null,
     tierAddQty:0, tierAddDims:null,
+    raildividerQty:0, raildividerSize:null,
     name:'', phone:'', zip:'', address:'', memo:'',
     unrecognized:[],
   };
 
   // "수취인정보"/"배송지"가 한 줄의 맨 앞이 아니라 중간에 붙어 나오는 경우까지 대응
-  const recipLineIdx = lines.findIndex(l => /수취인정보|배송지/.test(l));
+  const recipLineIdx = lines.findIndex(l => /수취인정보|배송지|수취인명/.test(l));
   let specLines, recipientLines;
   if (recipLineIdx >= 0) {
     specLines = lines.slice(0, recipLineIdx);
@@ -1136,9 +1144,14 @@ function parseOrderBlock(rawText) {
     const dm = line.match(/(\d{3,4})\s*[\*x×]\s*(\d{3,4})\s*[\*x×]\s*(\d{3,4})/);
     if (!dm) return;
     usedForDim.add(line);
-    const entry = { width:+dm[1], depth:+dm[2], height:+dm[3], shelves:null, qty:1 };
+    const entry = { width:+dm[1], depth:+dm[2], height:+dm[3], shelves:null, hangerShelves:null, division:null, qty:1 };
     const sm = line.match(/(\d+)\s*단/);
     if (sm) entry.shelves = +sm[1];
+    const hm = line.match(/(\d+)\s*행거/);
+    if (hm) entry.hangerShelves = +hm[1];
+    if (line.includes('독립형')) entry.division = '독립형';
+    else if (line.includes('연결형')) entry.division = '연결형';
+    else if (line.includes('행거형') || hm) entry.division = '행거형';
     const qm = line.match(/(\d+)\s*(?:세트|대)(?!\S)/);
     if (qm) entry.qty = +qm[1];
     result.rackDims.push(entry);
@@ -1174,6 +1187,10 @@ function parseOrderBlock(rawText) {
       const m = line.match(/(\d+)\s*(?:개|세트)/);
       result.lplateQty = m ? +m[1] : 1;
     }
+    if (/고정클립|클립/.test(line)) {
+      const m = line.match(/(\d+)\s*(?:개|세트)/);
+      result.clipQty = m ? +m[1] : 1;
+    }
     if (/보강대/.test(line)) {
       const sm = line.match(/(\d+)\s*보강대/);
       if (sm) result.bogangSpec = +sm[1];
@@ -1199,6 +1216,33 @@ function parseOrderBlock(rawText) {
       if (dm) result.tierAddDims = { w:+dm[1], d:+dm[2] };
     }
     if (/사이드안전바/.test(line)) {
+      result.unrecognized.push(line);
+    }
+    if (/레일디바이더세트/.test(line)) {
+      const sizes = [300,400,500,600,800];
+      const nums = (line.match(/\d+/g) || []).map(Number);
+      const size = sizes.find(s => nums.includes(s));
+      const m = line.match(/(\d+)\s*(?:개|세트)/);
+      result.raildividerQty = m ? +m[1] : 1;
+      if (size) result.raildividerSize = size;
+      else result.unrecognized.push(line);
+    }
+  });
+
+  // 모든 줄을 빠짐없이 검사 — 어떤 패턴에도 안 걸리는 줄은 전부 미인식으로 표시
+  const RECOGNIZED_PATTERNS = [
+    /경량랙|중량랙|스피드랙|홈던트|아연도금랙/,
+    /독립형|연결형|행거형/,
+    /화이트|백색|블랙|흑색|불랙/,
+    /합판/,
+    /\d{3,4}\s*[\*x×]\s*\d{3,4}\s*[\*x×]\s*\d{3,4}/,
+    /\d{2,4}\s*[\*x×]\s*\d{2,4}/,
+    /망치/, /후크/, /조절좌/, /L\s*형\s*플레이트/i, /고정클립|클립/, /보강대/,
+    /정면커튼|커튼봉|커튼세트/, /메쉬보드/, /단추가/, /사이드안전바/, /레일디바이더/,
+  ];
+  specLines.forEach(line => {
+    const recognized = RECOGNIZED_PATTERNS.some(re => re.test(line));
+    if (!recognized && !result.unrecognized.includes(line)) {
       result.unrecognized.push(line);
     }
   });
@@ -1268,8 +1312,9 @@ function applyParsedOrder(r) {
 
   if (r.rackType === '경량랙') {
     switchType('경량랙');
-    if (r.division) document.getElementById('l-division').value = r.division;
     r.rackDims.forEach(d => {
+      const division = d.division || r.division;
+      if (division) document.getElementById('l-division').value = division;
       if (d.width && LIGHT_PARTS.전면빔[d.width]) document.getElementById('l-width').value = d.width;
       if (d.depth && LIGHT_PARTS.공용받침[d.depth]) document.getElementById('l-depth').value = d.depth;
       if (d.height && LIGHT_PARTS.기둥[d.height]) document.getElementById('l-height').value = d.height;
@@ -1280,8 +1325,9 @@ function applyParsedOrder(r) {
     });
   } else if (r.rackType === '중량랙') {
     switchType('중량랙');
-    if (r.division) document.getElementById('m-division').value = r.division;
     r.rackDims.forEach(d => {
+      const division = d.division || r.division;
+      if (division) document.getElementById('m-division').value = division;
       if (d.width && MEDIUM_PARTS.전면빔[d.width]) document.getElementById('m-width').value = d.width;
       if (d.depth && MEDIUM_PARTS.상부받침[d.depth]) document.getElementById('m-depth').value = d.depth;
       if (d.height && MEDIUM_PARTS.기둥[d.height]) document.getElementById('m-height').value = d.height;
@@ -1292,39 +1338,49 @@ function applyParsedOrder(r) {
     });
   } else if (r.rackType === '스피드랙') {
     switchType('스피드랙');
-    if (r.division) document.getElementById('s-division').value = r.division;
     if (r.color) document.getElementById('s-color').value = r.color;
     r.rackDims.forEach(d => {
+      const division = d.division || r.division;
+      if (division) document.getElementById('s-division').value = division;
       if (d.height) document.getElementById('s-height').value = d.height;
       if (d.width) document.getElementById('s-width').value = d.width;
       onSpeedFormChange();
       const divNow = document.getElementById('s-division').value;
       if (divNow === '독립형' && d.depth) document.getElementById('s-depth').value = d.depth;
+      if (divNow === '행거형') {
+        if (d.depth) document.getElementById('s-depth').value = d.depth;
+        if (d.hangerShelves) document.getElementById('s-hanger-shelves').value = d.hangerShelves;
+      }
       if (d.shelves) document.getElementById('s-shelves').value = d.shelves;
       document.getElementById('s-qty').value = d.qty || 1;
       if (r.plywoodThick && [...document.getElementById('s-plywood').options].some(o=>o.value==String(r.plywoodThick))) {
         document.getElementById('s-plywood').value = r.plywoodThick;
       }
       const n = entries.length; addSpeedRack();
-      if (entries.length > n) applied.push(`스피드랙 ${d.width}*${d.depth}*${d.height} ${d.shelves||''}단`);
+      if (entries.length > n) applied.push(`스피드랙 ${divNow} ${d.width}*${d.depth}*${d.height} ${d.shelves||''}단${d.hangerShelves?'('+d.hangerShelves+'행거)':''}`);
     });
   } else if (r.rackType === '홈던트') {
     switchType('홈던트');
-    if (r.division) document.getElementById('h-division').value = r.division;
     if (r.color) document.getElementById('h-color').value = r.color;
     r.rackDims.forEach(d => {
+      const division = d.division || r.division;
+      if (division) document.getElementById('h-division').value = division;
       if (d.height) document.getElementById('h-height').value = d.height;
       if (d.width) document.getElementById('h-width').value = d.width;
       onHomeDentFormChange();
       const divNow = document.getElementById('h-division').value;
       if (divNow === '독립형' && d.depth) document.getElementById('h-depth').value = d.depth;
+      if (divNow === '행거형') {
+        if (d.depth) document.getElementById('h-depth').value = d.depth;
+        if (d.hangerShelves) document.getElementById('h-hanger-shelves').value = d.hangerShelves;
+      }
       if (d.shelves) document.getElementById('h-shelves').value = d.shelves;
       document.getElementById('h-qty').value = d.qty || 1;
       if (r.plywoodThick && [...document.getElementById('h-plywood').options].some(o=>o.value==String(r.plywoodThick))) {
         document.getElementById('h-plywood').value = r.plywoodThick;
       }
       const n = entries.length; addHomeDent();
-      if (entries.length > n) applied.push(`홈던트 ${d.width}*${d.depth}*${d.height} ${d.shelves||''}단`);
+      if (entries.length > n) applied.push(`홈던트 ${divNow} ${d.width}*${d.depth}*${d.height} ${d.shelves||''}단${d.hangerShelves?'('+d.hangerShelves+'행거)':''}`);
     });
   }
 
@@ -1363,6 +1419,19 @@ function applyParsedOrder(r) {
     document.getElementById('acc-qty').value = r.lplateQty;
     addAccessory();
     applied.push(`L형플레이트세트 ${r.lplateQty}개`);
+  }
+  if (r.clipQty > 0) {
+    const clipKey = (r.rackType === '스피드랙' ? 'clip-speed-' : 'clip-home-') + (r.color === 'B' ? 'b' : 'w');
+    document.getElementById('acc-select').value = clipKey;
+    document.getElementById('acc-qty').value = r.clipQty;
+    addAccessory();
+    applied.push(`기둥고정클립 ${r.clipQty}개`);
+  }
+  if (r.raildividerQty > 0 && r.raildividerSize) {
+    document.getElementById('acc-select').value = `raildivider-home-${r.raildividerSize}`;
+    document.getElementById('acc-qty').value = r.raildividerQty;
+    addAccessory();
+    applied.push(`레일디바이더세트(${r.raildividerSize}mm) ${r.raildividerQty}개`);
   }
 
   // 보강대 (단품 DB에서 색상+길이로 찾아서 직접 추가)
@@ -1539,8 +1608,13 @@ async function submitQuickEntry() {
   const single = report.length === 1;
   resultEl.innerHTML = `<strong>${okCount} / ${report.length}건 저장 완료</strong><br>` +
     report.map(x => {
-      let line = single ? `${x.ok ? '✓' : '✗'} ${x.msg}` : `발주${x.n} (${x.name}): ${x.ok ? '✓' : '✗'} ${x.msg}`;
-      if (x.unrecognized && x.unrecognized.length) line += ` — ⚠ 미인식: ${x.unrecognized.join(' / ')}`;
+      const statusSpan = x.ok
+        ? `<span style="color:var(--accent2)">✓</span>`
+        : `<span style="color:var(--danger);font-weight:600">✗ ${x.msg}</span>`;
+      let line = single
+        ? (x.ok ? `${statusSpan} ${x.msg}` : statusSpan)
+        : `발주${x.n} (${x.name}): ${x.ok ? `${statusSpan} ${x.msg}` : statusSpan}`;
+      if (x.unrecognized && x.unrecognized.length) line += ` — <span style="color:var(--danger);font-weight:600">⚠ 미인식: ${x.unrecognized.join(' / ')}</span>`;
       return line;
     }).join('<br>');
 
@@ -1996,6 +2070,46 @@ const ACC_PARTS = {
       { code:'3T56S000015',  name:'공용/부속/둥근머리볼트(M4)_서랍장용/B',   spec:'M4*5/검정',  qty:6  },
     ],
   },
+  'raildivider-home-300': {
+    label:'레일디바이더세트 300mm (홈던트)',
+    speedHome: true,
+    items:[
+      { code:'2C56S171449', name:'홈던트/부속/멀티레일디바이더브라켓/N',  spec:'17*14.85*49.5', qty:4 },
+      { code:'2C56S060270', name:'홈던트/부속/멀티레일디바이더프레임파이프/N', spec:'6*270', qty:4 },
+    ],
+  },
+  'raildivider-home-400': {
+    label:'레일디바이더세트 400mm (홈던트)',
+    speedHome: true,
+    items:[
+      { code:'2C56S171449', name:'홈던트/부속/멀티레일디바이더브라켓/N',  spec:'17*14.85*49.5', qty:4 },
+      { code:'2C56S060370', name:'홈던트/부속/멀티레일디바이더프레임파이프/N', spec:'6*370', qty:4 },
+    ],
+  },
+  'raildivider-home-500': {
+    label:'레일디바이더세트 500mm (홈던트)',
+    speedHome: true,
+    items:[
+      { code:'2C56S171449', name:'홈던트/부속/멀티레일디바이더브라켓/N',  spec:'17*14.85*49.5', qty:4 },
+      { code:'2C56S060470', name:'홈던트/부속/멀티레일디바이더프레임파이프/N', spec:'6*470', qty:4 },
+    ],
+  },
+  'raildivider-home-600': {
+    label:'레일디바이더세트 600mm (홈던트)',
+    speedHome: true,
+    items:[
+      { code:'2C56S171449', name:'홈던트/부속/멀티레일디바이더브라켓/N',  spec:'17*14.85*49.5', qty:4 },
+      { code:'2C56S060570', name:'홈던트/부속/멀티레일디바이더프레임파이프/N', spec:'6*570', qty:4 },
+    ],
+  },
+  'raildivider-home-800': {
+    label:'레일디바이더세트 800mm (홈던트)',
+    speedHome: true,
+    items:[
+      { code:'2C56S171449', name:'홈던트/부속/멀티레일디바이더브라켓/N',  spec:'17*14.85*49.5', qty:4 },
+      { code:'2C56S060770', name:'홈던트/부속/멀티레일디바이더프레임파이프/N', spec:'6*770', qty:4 },
+    ],
+  },
 };
 
 function updateAccOptions() {
@@ -2010,7 +2124,7 @@ function updateAccOptions() {
     if (isLightMedium) {
       opt.style.display = (v === 'hammer' || v === 'wheel-light') ? '' : 'none';
     } else if (isSpeed) {
-      opt.style.display = (v.startsWith('curtain-home') || v.startsWith('clip-home') || v.startsWith('mesh-home') || v === 'level-home-6' || v === 'wheel-light' || v.startsWith('wheel-home') || v.startsWith('drawer3-home')) ? 'none' : '';
+      opt.style.display = (v.startsWith('curtain-home') || v.startsWith('clip-home') || v.startsWith('mesh-home') || v === 'level-home-6' || v === 'wheel-light' || v.startsWith('wheel-home') || v.startsWith('drawer3-home') || v.startsWith('raildivider-home')) ? 'none' : '';
     } else if (isHome) {
       opt.style.display = (v.startsWith('curtain-speed') || v.startsWith('clip-speed') || v.startsWith('mesh-speed') || v.startsWith('level-speed') || v === 'wheel-light' || v.startsWith('wheel-speed')) ? 'none' : '';
     } else {
@@ -2988,16 +3102,13 @@ function showTab(tab) {
   document.getElementById('viewInput').style.display        = tab==='input'      ? '' : 'none';
   document.getElementById('viewQuickEntry').style.display   = tab==='quickEntry' ? '' : 'none';
   document.getElementById('viewSaved').style.display        = tab==='saved'      ? '' : 'none';
-  document.getElementById('viewByAccount').style.display    = tab==='byAccount'  ? '' : 'none';
   document.getElementById('viewMembers').style.display      = tab==='members'    ? '' : 'none';
   document.getElementById('tabHome').classList.toggle('active', tab==='home');
   document.getElementById('tabInput').classList.toggle('active', tab==='input');
   document.getElementById('tabQuickEntry').classList.toggle('active', tab==='quickEntry');
   document.getElementById('tabSaved').classList.toggle('active', tab==='saved');
-  document.getElementById('tabByAccount').classList.toggle('active', tab==='byAccount');
   document.getElementById('tabMembers').classList.toggle('active', tab==='members');
   if (tab==='saved') loadSavedOrders();
-  if (tab==='byAccount') loadByAccount();
   if (tab==='members') loadMembers();
 }
 
@@ -3028,10 +3139,9 @@ sb.auth.onAuthStateChange(async (event, session) => {
     document.getElementById('appWrap').style.display  = '';
     document.getElementById('userInfo').innerHTML =
       `<strong>${currentUser.email}</strong>${isMaster ? ' <span style="color:var(--accent);font-size:0.7rem;font-weight:700">[마스터]</span>' : ''}`;
-    document.getElementById('tabByAccount').style.display = isMaster ? '' : 'none';
     document.getElementById('tabMembers').style.display = isMaster ? '' : 'none';
-    document.getElementById('homeByAccountCard').style.display = isMaster ? '' : 'none';
     document.getElementById('homeMembersCard').style.display = isMaster ? '' : 'none';
+    document.getElementById('accountGroupToggleWrap').style.display = isMaster ? 'flex' : 'none';
     showTab('home');
   } else {
     currentUser = null;
@@ -3103,6 +3213,34 @@ async function saveOrder() {
 }
 
 // ── 저장 목록 불러오기 ──
+let erpFilter = 'all';
+let groupByAccountMode = false;
+
+function setErpFilter(f) {
+  erpFilter = f;
+  ['all','done','pending'].forEach(k => document.getElementById('erpFilterBtn-'+k).classList.toggle('active', k===f));
+  loadSavedOrders();
+}
+function toggleAccountGrouping() {
+  groupByAccountMode = !groupByAccountMode;
+  document.getElementById('accountGroupBtn').classList.toggle('active', groupByAccountMode);
+  loadSavedOrders();
+}
+
+function renderOrderItem(o) {
+  return `
+    <div class="order-item" onclick="openOrderModal('${o.id}')">
+      <div class="order-info">
+        <div class="order-name">${o.recipient_name || '(수취인 없음)'} ${o.phone ? '· ' + o.phone : ''}</div>
+        <div class="order-sub">${o.address || ''} ${o.zipcode ? '(' + o.zipcode + ')' : ''} ${o.freight_type ? '· ' + (['파렛','용차'].includes(o.freight_type) ? `<span style="color:var(--danger)">${o.freight_type}</span>` : o.freight_type) : ''} ${o.memo ? '· ' + o.memo : ''}</div>
+        ${(isMaster && !groupByAccountMode) ? `<div class="order-user">👤 ${o.profiles?.name || o.profiles?.email || ''}</div>` : ''}
+      </div>
+      <button class="order-erp${o.erp_submitted?' on':''}" onclick="event.stopPropagation();toggleErp('${o.id}', ${!!o.erp_submitted})">${o.erp_submitted?'✅ ERP완료':'ERP 미입력'}</button>
+      <button class="order-del" onclick="event.stopPropagation();deleteOrder('${o.id}')">삭제</button>
+    </div>
+  `;
+}
+
 async function loadSavedOrders() {
   const list = document.getElementById('savedList');
   const sub  = document.getElementById('savedSubtitle');
@@ -3111,37 +3249,55 @@ async function loadSavedOrders() {
   let query = sb.from('orders').select('*, profiles(name, email)').order('created_at', { ascending: false });
   if (!isMaster) query = query.eq('user_id', currentUser.id);
 
-  const { data, error } = await query;
+  const { data: raw, error } = await query;
   if (error) { list.innerHTML = '<div style="color:var(--danger)">불러오기 실패</div>'; return; }
 
-  sub.textContent = isMaster ? `전체 ${data.length}건` : `내 저장 ${data.length}건`;
+  const data = erpFilter === 'all' ? raw
+    : erpFilter === 'done' ? raw.filter(o => o.erp_submitted)
+    : raw.filter(o => !o.erp_submitted);
+
+  const filterTag = erpFilter === 'all' ? '' : erpFilter === 'done' ? ' (ERP완료만)' : ' (ERP미입력만)';
+  sub.textContent = (isMaster ? `전체 ${data.length}건` : `내 저장 ${data.length}건`) + filterTag;
 
   if (!data.length) { list.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;padding:20px 0">저장된 항목이 없습니다.</div>'; return; }
 
   // 날짜별 그룹
-  const groups = {};
+  const dateGroups = {};
   data.forEach(o => {
     const d = new Date(o.created_at).toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'short' });
-    if (!groups[d]) groups[d] = [];
-    groups[d].push(o);
+    if (!dateGroups[d]) dateGroups[d] = [];
+    dateGroups[d].push(o);
   });
 
-  list.innerHTML = Object.entries(groups).map(([date, orders]) => `
-    <div class="date-group">
-      <div class="date-label">${date}</div>
-      ${orders.map(o => `
-        <div class="order-item" onclick="openOrderModal('${o.id}')">
-          <div class="order-info">
-            <div class="order-name">${o.recipient_name || '(수취인 없음)'} ${o.phone ? '· ' + o.phone : ''}</div>
-            <div class="order-sub">${o.address || ''} ${o.zipcode ? '(' + o.zipcode + ')' : ''} ${o.freight_type ? '· ' + (['파렛','용차'].includes(o.freight_type) ? `<span style="color:var(--danger)">${o.freight_type}</span>` : o.freight_type) : ''} ${o.memo ? '· ' + o.memo : ''}</div>
-            ${isMaster ? `<div class="order-user">👤 ${o.profiles?.name || o.profiles?.email || ''}</div>` : ''}
-          </div>
-          <button class="order-erp${o.erp_submitted?' on':''}" onclick="event.stopPropagation();toggleErp('${o.id}', ${!!o.erp_submitted})">${o.erp_submitted?'✅ ERP완료':'ERP 미입력'}</button>
-          <button class="order-del" onclick="event.stopPropagation();deleteOrder('${o.id}')">삭제</button>
+  if (isMaster && groupByAccountMode) {
+    // 날짜별 → 그 안에서 계정별로 세분화
+    list.innerHTML = Object.entries(dateGroups).map(([date, orders]) => {
+      const accGroups = {};
+      orders.forEach(o => {
+        const key = o.user_id;
+        if (!accGroups[key]) accGroups[key] = { name: o.profiles?.name || o.profiles?.email || '(알 수 없음)', items: [] };
+        accGroups[key].items.push(o);
+      });
+      return `
+        <div class="date-group">
+          <div class="date-label">${date}</div>
+          ${Object.values(accGroups).map(acc => `
+            <div style="margin:10px 0 14px;padding-left:2px">
+              <div style="font-size:0.78rem;font-weight:700;color:var(--accent2);margin-bottom:6px">👤 ${acc.name} <span style="color:var(--text2);font-weight:400">(${acc.items.length}건)</span></div>
+              ${acc.items.map(renderOrderItem).join('')}
+            </div>
+          `).join('')}
         </div>
-      `).join('')}
-    </div>
-  `).join('');
+      `;
+    }).join('');
+  } else {
+    list.innerHTML = Object.entries(dateGroups).map(([date, orders]) => `
+      <div class="date-group">
+        <div class="date-label">${date}</div>
+        ${orders.map(renderOrderItem).join('')}
+      </div>
+    `).join('');
+  }
 }
 
 // ── 주문 상세 모달 ──
@@ -3238,8 +3394,7 @@ async function saveModalQty() {
   const { error } = await sb.from('orders').update({ parts: window._modalParts }).eq('id', window._modalOrderId);
   if (error) { showToast('수정 실패: ' + error.message); return; }
   showToast('수량 수정 완료!');
-  if (document.getElementById('viewByAccount').style.display !== 'none') loadByAccount();
-  else loadSavedOrders();
+  loadSavedOrders();
 }
 
 function closeModal() {
@@ -3252,75 +3407,16 @@ async function deleteOrder(id) {
   const { error } = await sb.from('orders').delete().eq('id', id);
   if (error) { showToast('삭제 실패'); return; }
   showToast('삭제 완료');
-  if (document.getElementById('viewByAccount').style.display !== 'none') loadByAccount();
-  else loadSavedOrders();
+  loadSavedOrders();
 }
 
 async function toggleErp(id, current) {
   const { error } = await sb.from('orders').update({ erp_submitted: !current }).eq('id', id);
   if (error) { showToast('변경 실패: ' + error.message); return; }
   showToast(!current ? 'ERP 입력 완료로 표시' : 'ERP 미입력으로 변경');
-  if (document.getElementById('viewByAccount').style.display !== 'none') loadByAccount();
-  else loadSavedOrders();
+  loadSavedOrders();
 }
 
-// ── 계정별 저장 목록 (마스터 전용) ──
-async function loadByAccount() {
-  const list = document.getElementById('byAccountList');
-  const sub  = document.getElementById('byAccountSubtitle');
-  if (!isMaster) { list.innerHTML = ''; return; }
-  list.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;padding:20px 0">불러오는 중...</div>';
-
-  const { data, error } = await sb.from('orders').select('*, profiles(name, email)').order('created_at', { ascending: false });
-  if (error) { list.innerHTML = '<div style="color:var(--danger)">불러오기 실패</div>'; return; }
-
-  sub.textContent = `전체 ${data.length}건 · 계정 ${new Set(data.map(o => o.user_id)).size}명`;
-
-  if (!data.length) { list.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;padding:20px 0">저장된 항목이 없습니다.</div>'; return; }
-
-  // 1) 계정별 그룹
-  const accGroups = {};
-  data.forEach(o => {
-    const key = o.user_id;
-    if (!accGroups[key]) accGroups[key] = { name: o.profiles?.name || o.profiles?.email || '(알 수 없음)', email: o.profiles?.email || '', items: [] };
-    accGroups[key].items.push(o);
-  });
-
-  list.innerHTML = Object.values(accGroups).map(acc => {
-    // 2) 계정 내에서 일자별 그룹
-    const dateGroups = {};
-    acc.items.forEach(o => {
-      const d = new Date(o.created_at).toLocaleDateString('ko-KR', { year:'numeric', month:'long', day:'numeric', weekday:'short' });
-      if (!dateGroups[d]) dateGroups[d] = [];
-      dateGroups[d].push(o);
-    });
-    return `
-      <div class="account-group" style="margin-bottom:28px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
-        <div style="padding:12px 16px;background:var(--surface2);font-weight:700;display:flex;justify-content:space-between;align-items:center">
-          <span>👤 ${acc.name} ${acc.email ? `<span style="color:var(--text2);font-weight:400;font-size:0.8rem">(${acc.email})</span>` : ''}</span>
-          <span style="color:var(--text2);font-weight:400;font-size:0.8rem">${acc.items.length}건</span>
-        </div>
-        <div style="padding:14px 16px">
-          ${Object.entries(dateGroups).map(([date, orders]) => `
-            <div class="date-group">
-              <div class="date-label">${date}</div>
-              ${orders.map(o => `
-                <div class="order-item" onclick="openOrderModal('${o.id}')">
-                  <div class="order-info">
-                    <div class="order-name">${o.recipient_name || '(수취인 없음)'} ${o.phone ? '· ' + o.phone : ''}</div>
-                    <div class="order-sub">${o.address || ''} ${o.zipcode ? '(' + o.zipcode + ')' : ''} ${o.freight_type ? '· ' + (['파렛','용차'].includes(o.freight_type) ? `<span style="color:var(--danger)">${o.freight_type}</span>` : o.freight_type) : ''} ${o.memo ? '· ' + o.memo : ''}</div>
-                  </div>
-                  <button class="order-erp${o.erp_submitted?' on':''}" onclick="event.stopPropagation();toggleErp('${o.id}', ${!!o.erp_submitted})">${o.erp_submitted?'✅ ERP완료':'ERP 미입력'}</button>
-                  <button class="order-del" onclick="event.stopPropagation();deleteOrder('${o.id}')">삭제</button>
-                </div>
-              `).join('')}
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }).join('');
-}
 
 // ── 초기 로드시 단품 드롭다운 채우기 ──
 populateSingleCatSelect();
