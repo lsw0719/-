@@ -66,6 +66,7 @@
   .type-tab { padding: 7px 18px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface2); color: var(--text2); font-family: inherit; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
   .type-tab.active-경량랙   { background: var(--accent);          border-color: var(--accent);          color: #fff; }
   .type-tab.active-중량랙   { background: #0891b2;                border-color: #0891b2;                color: #fff; }
+  .type-tab.active-아연도금랙 { background: #64748b;              border-color: #64748b;                color: #fff; }
   .type-tab.active-스피드랙 { background: var(--speed-accent);    border-color: var(--speed-accent);    color: #0f1117; }
   .type-tab.active-홈던트   { background: #7c3aed;                border-color: #7c3aed;                color: #fff; }
   .type-tab.active-합판     { background: var(--plywood-accent);  border-color: var(--plywood-accent);  color: #0f1117; }
@@ -282,6 +283,7 @@
   <div class="type-tabs">
     <button class="type-tab active-경량랙" id="tab-경량랙"  onclick="switchType('경량랙')">경량랙</button>
     <button class="type-tab"              id="tab-중량랙"   onclick="switchType('중량랙')">중량랙</button>
+    <button class="type-tab"              id="tab-아연도금랙" onclick="switchType('아연도금랙')">아연도금랙</button>
     <button class="type-tab"              id="tab-스피드랙" onclick="switchType('스피드랙')">스피드랙</button>
     <button class="type-tab"              id="tab-홈던트"   onclick="switchType('홈던트')">홈던트</button>
   </div>
@@ -308,6 +310,34 @@
       <div class="field"><label>단수</label><input type="number" id="l-shelves" value="4" min="1" max="20"></div>
       <div class="field"><label>대수</label><input type="number" id="l-qty" value="1" min="1"></div>
       <div class="field"><label>&nbsp;</label><button class="btn btn-primary" onclick="addLightRack()">+ 추가</button></div>
+    </div>
+  </div>
+
+  <!-- 아연도금랙 (경량랙과 동일 로직, 용차 전용) -->
+  <div id="form-아연도금랙" style="display:none">
+    <p style="font-size:0.78rem;color:var(--danger);margin-bottom:8px">⚠ 아연도금랙은 용차로만 접수 가능합니다.</p>
+    <div class="form-grid">
+      <div class="field"><label>구분</label>
+        <select id="gv-division"><option value="독립형">독립형</option><option value="연결형">연결형</option></select>
+      </div>
+      <div class="field"><label>기둥 높이 (mm)</label>
+        <select id="gv-height">
+          <option value="900">900</option><option value="1200">1200</option><option value="1500">1500</option>
+          <option value="1800" selected>1800</option><option value="2100">2100</option><option value="2400">2400</option>
+        </select>
+      </div>
+      <div class="field"><label>가로 / 전면빔 (mm)</label>
+        <select id="gv-width">
+          <option value="700">700</option><option value="900">900</option>
+          <option value="1000">1000</option><option value="1200" selected>1200</option><option value="1500">1500</option>
+        </select>
+      </div>
+      <div class="field"><label>세로 / 공용받침 (mm)</label>
+        <select id="gv-depth"><option value="300">300</option><option value="450" selected>450</option><option value="600">600</option></select>
+      </div>
+      <div class="field"><label>단수</label><input type="number" id="gv-shelves" value="4" min="1" max="20"></div>
+      <div class="field"><label>대수</label><input type="number" id="gv-qty" value="1" min="1"></div>
+      <div class="field"><label>&nbsp;</label><button class="btn btn-primary" onclick="addGalvRack()">+ 추가</button></div>
     </div>
   </div>
 
@@ -711,6 +741,49 @@ const LIGHT_PARTS = {
   안전핀:{code:'2D9W000001',name:'경량랙/부속/안전핀(경중량랙공용)/W',spec:'4파이'},
 };
 
+// 아연도금랙 — 로직은 경량랙과 동일, 용차 전용
+const GALV_PARTS = {
+  기둥: {
+    900:{code:'2D0000GI090',name:'아연도금랙/규격/기둥/G',spec:'900'},
+    1200:{code:'2D0000GI120',name:'아연도금랙/규격/기둥/G',spec:'1200'},
+    1500:{code:'2D0000GI150',name:'아연도금랙/규격/기둥/G',spec:'1500'},
+    1800:{code:'2D0000GI180',name:'아연도금랙/규격/기둥/G',spec:'1800'},
+    2100:{code:'2D0000GI210',name:'아연도금랙/규격/기둥/G',spec:'2100'},
+    2400:{code:'2D0000GI240',name:'아연도금랙/규격/기둥/G',spec:'2400'},
+  },
+  전면빔: {
+    700:{code:'2D11100GI070',name:'아연도금랙/규격/전면빔/G',spec:'700'},
+    900:{code:'2D11100GI090',name:'아연도금랙/규격/전면빔/G',spec:'900'},
+    1000:{code:'2D11100GI100',name:'아연도금랙/규격/전면빔/G',spec:'1000'},
+    1200:{code:'2D11100GI120',name:'아연도금랙/규격/전면빔/G',spec:'1200'},
+    1500:{code:'2D11100GI150',name:'아연도금랙/규격/전면빔/G',spec:'1500'},
+  },
+  공용받침: {
+    300:{code:'2D11000GI030A',name:'아연도금랙/규격/공용받침/G',spec:'300'},
+    450:{code:'2D11000GI045A',name:'아연도금랙/규격/공용받침/G',spec:'450'},
+    600:{code:'2D11000GI060A',name:'아연도금랙/규격/공용받침/G',spec:'600'},
+  },
+  선반: {
+    '700*300':{code:'2D9G0700300',name:'아연도금랙/규격/선반/G',spec:'700*300'},
+    '700*450':{code:'2D9G0700450',name:'아연도금랙/규격/선반/G',spec:'700*450'},
+    '700*600':{code:'2D9G0700600',name:'아연도금랙/규격/선반/G',spec:'700*600'},
+    '900*300':{code:'2D9G1900300',name:'아연도금랙/규격/선반/G',spec:'900*300'},
+    '900*450':{code:'2D9G1900450',name:'아연도금랙/규격/선반/G',spec:'900*450'},
+    '900*600':{code:'2D9G0900600',name:'아연도금랙/규격/선반/G',spec:'900*600'},
+    '1000*300':{code:'2D9G1000300',name:'아연도금랙/규격/선반/G',spec:'1000*300'},
+    '1000*450':{code:'2D9G1000450',name:'아연도금랙/규격/선반/G',spec:'1000*450'},
+    '1000*600':{code:'2D9G1000600',name:'아연도금랙/규격/선반/G',spec:'1000*600'},
+    '1200*300':{code:'2D9G1200030',name:'아연도금랙/규격/선반/G',spec:'1200*300'},
+    '1200*450':{code:'2D9G1200045',name:'아연도금랙/규격/선반/G',spec:'1200*450'},
+    '1200*600':{code:'2D9G1200600',name:'아연도금랙/규격/선반/G',spec:'1200*600'},
+    '1500*300':{code:'2D9G1500300',name:'아연도금랙/규격/선반/G',spec:'1500*300'},
+    '1500*450':{code:'2D9G1500450',name:'아연도금랙/규격/선반/G',spec:'1500*450'},
+    '1500*600':{code:'2D9G1500600',name:'아연도금랙/규격/선반/G',spec:'1500*600'},
+  },
+  안전좌:{code:'2A09G00001',name:'아연도금랙/부속/안전좌/G',spec:'50*50'},
+  안전핀:{code:'2D9G000001',name:'아연도금랙/부속/안전핀(경중량랙공용)/G',spec:'4파이'},
+};
+
 // 스피드랙 — /160/받침 전 규격 통일 (이번 파일 기준)
 const SPEED_기둥 = {
   W:{330:'3S21W000033',420:'3S21W000042',600:'3S21W000060',750:'3S21W000075',
@@ -974,7 +1047,7 @@ let entries = [], entryId = 0, currentType = '경량랙';
 // ════════════════════════════════════════════════════════
 function switchType(type) {
   currentType = type;
-  ['경량랙','중량랙','스피드랙','홈던트'].forEach(t => {
+  ['경량랙','중량랙','아연도금랙','스피드랙','홈던트'].forEach(t => {
     document.getElementById('form-'+t).style.display = t===type?'':'none';
     document.getElementById('tab-'+t).className = 'type-tab'+(t===type?' active-'+t:'');
   });
@@ -1927,7 +2000,7 @@ const ACC_PARTS = {
 
 function updateAccOptions() {
   const sel = document.getElementById('acc-select');
-  const isLightMedium = (currentType === '경량랙' || currentType === '중량랙');
+  const isLightMedium = (currentType === '경량랙' || currentType === '중량랙' || currentType === '아연도금랙');
   const isSpeed  = currentType === '스피드랙';
   const isHome   = currentType === '홈던트';
 
@@ -1958,7 +2031,7 @@ function updateAccOptions() {
 
 // 랙 종류가 바뀌면 기존 랙 항목 초기화 후 추가
 function clearRackEntriesIfTypeChanged(newType) {
-  const rackTypes = ['경량랙','중량랙','스피드랙','홈던트'];
+  const rackTypes = ['경량랙','중량랙','아연도금랙','스피드랙','홈던트'];
   const existingRack = entries.find(e => rackTypes.includes(e.rackType));
   if (existingRack && existingRack.rackType !== newType) {
     if (!confirm(`기존 ${existingRack.rackType} 항목을 초기화하고 ${newType}을(를) 추가할까요?`)) return false;
@@ -2058,7 +2131,7 @@ function addAccessory() {
   if (blockIfDrawerConflict(DRAWER_KEYS.includes(key))) return;
 
   // 경량/중량랙만 있을 때 망치 외 추가 차단
-  const hasOnlyLightMedium = entries.some(e => e.rackType === '경량랙' || e.rackType === '중량랙')
+  const hasOnlyLightMedium = entries.some(e => e.rackType === '경량랙' || e.rackType === '중량랙' || e.rackType === '아연도금랙')
     && !entries.some(e => e.rackType === '스피드랙' || e.rackType === '홈던트');
   if (hasOnlyLightMedium && key !== 'hammer') {
     preview.textContent = '⚠ 경량랙·중량랙에는 망치만 추가할 수 있습니다.';
@@ -2104,6 +2177,10 @@ function addAccessory() {
   });
   preview.textContent = `${p.label} ${qty}${p.items.length > 1 ? '세트' : '개'} 추가됨`;
   preview.style.color = 'var(--accent2)';
+  if (DRAWER_KEYS.includes(key)) {
+    const colorTag = key.endsWith('-b') ? 'b' : 'w';
+    document.getElementById('orderMemo').value = `홈던트3단서랍장${colorTag} ${qty}set`;
+  }
   renderAll();
 }
 
@@ -2143,6 +2220,24 @@ function addLightRack() {
   }
   errEl.classList.remove('show');
   entries.push({id:entryId++,rackType:'경량랙',division,height,width,depth,shelves,qty});
+  renderAll();
+}
+
+function addGalvRack() {
+  if (!clearRackEntriesIfTypeChanged('아연도금랙')) return;
+  if (blockIfDrawerConflict(false)) return;
+  const division=document.getElementById('gv-division').value;
+  const height=parseInt(document.getElementById('gv-height').value);
+  const width=parseInt(document.getElementById('gv-width').value);
+  const depth=parseInt(document.getElementById('gv-depth').value);
+  const shelves=parseInt(document.getElementById('gv-shelves').value);
+  const qty=parseInt(document.getElementById('gv-qty').value);
+  const errEl=document.getElementById('errorMsg');
+  if (!GALV_PARTS.기둥[height]||!GALV_PARTS.전면빔[width]||!GALV_PARTS.공용받침[depth]||!GALV_PARTS.선반[`${width}*${depth}`]) {
+    errEl.classList.add('show'); return;
+  }
+  errEl.classList.remove('show');
+  entries.push({id:entryId++,rackType:'아연도금랙',division,height,width,depth,shelves,qty});
   renderAll();
 }
 
@@ -2213,6 +2308,7 @@ function renderAll() {
 function entryLabel(e) {
   if (e.rackType==='경량랙') return `${e.height}H × ${e.width}W × ${e.depth}D  /  ${e.shelves}단`;
   if (e.rackType==='중량랙') return `${e.height}H × ${e.width}W × ${e.depth}D  /  ${e.shelves}단`;
+  if (e.rackType==='아연도금랙') return `${e.height}H × ${e.width}W × ${e.depth}D  /  ${e.shelves}단`;
   if (e.rackType==='부속품') return e.label || e.name;
   if (e.rackType==='스피드랙' || e.rackType==='홈던트') {
     const cl = e.color==='W'?'화이트':'블랙';
@@ -2235,6 +2331,9 @@ function renderEntryList() {
     } else if (e.rackType==='중량랙') {
       cls += e.division==='연결형' ? ' medium-conn' : ' medium';
       txt = `중량 ${e.division}`;
+    } else if (e.rackType==='아연도금랙') {
+      cls += e.division==='연결형' ? ' connected' : '';
+      txt = `아연도금 ${e.division}`;
     } else if (e.rackType==='부속품') {
       cls += ' acc';
       txt = '부속품';
@@ -2292,6 +2391,14 @@ const SINGLE_PARTS = (() => {
   Object.values(LIGHT_PARTS.선반).forEach(p => add(p.code, p.name, p.spec, ['경량랙'], '선반'));
   add(LIGHT_PARTS.안전좌.code, LIGHT_PARTS.안전좌.name, LIGHT_PARTS.안전좌.spec, ['경량랙'], '안전좌');
   add(LIGHT_PARTS.안전핀.code, LIGHT_PARTS.안전핀.name, LIGHT_PARTS.안전핀.spec, ['경량랙','중량랙'], '안전핀');
+
+  // 아연도금랙
+  Object.values(GALV_PARTS.기둥).forEach(p => add(p.code, p.name, p.spec, ['아연도금랙'], '기둥'));
+  Object.values(GALV_PARTS.전면빔).forEach(p => add(p.code, p.name, p.spec, ['아연도금랙'], '전면빔'));
+  Object.values(GALV_PARTS.공용받침).forEach(p => add(p.code, p.name, p.spec, ['아연도금랙'], '공용받침'));
+  Object.values(GALV_PARTS.선반).forEach(p => add(p.code, p.name, p.spec, ['아연도금랙'], '선반'));
+  add(GALV_PARTS.안전좌.code, GALV_PARTS.안전좌.name, GALV_PARTS.안전좌.spec, ['아연도금랙'], '안전좌');
+  add(GALV_PARTS.안전핀.code, GALV_PARTS.안전핀.name, GALV_PARTS.안전핀.spec, ['아연도금랙'], '안전핀');
 
   // 중량랙
   Object.values(MEDIUM_PARTS.기둥).forEach(p => add(p.code, p.name, p.spec, ['중량랙'], '기둥'));
@@ -2401,6 +2508,7 @@ const SINGLE_PARTS = (() => {
 // 랙 종류별 카테고리 순서
 function categoryOrderFor(type) {
   if (type === '경량랙') return LIGHT_ORDER;
+  if (type === '아연도금랙') return GALV_ORDER;
   if (type === '중량랙') return MEDIUM_ORDER;
   if (type === '스피드랙') return SPEED_ORDER;
   if (type === '홈던트') return HOMEDENT_ORDER;
@@ -2410,10 +2518,11 @@ function categoryOrderFor(type) {
 // 단품 추가 탭별 허용 rack 목록
 function allowedRacks() {
   if (currentType === '경량랙') return ['경량랙'];
+  if (currentType === '아연도금랙') return ['아연도금랙'];
   if (currentType === '중량랙') return ['중량랙'];
   if (currentType === '스피드랙') return ['스피드랙'];
   if (currentType === '홈던트') return ['홈던트'];
-  return ['경량랙','중량랙','스피드랙','홈던트'];
+  return ['경량랙','아연도금랙','중량랙','스피드랙','홈던트'];
 }
 
 function populateSingleCatSelect() {
@@ -2476,6 +2585,7 @@ function addSinglePart() {
 }
 
 const LIGHT_ORDER=['기둥','전면빔','공용받침','안전좌','안전핀','우레탄망치','기타부속','선반'];
+const GALV_ORDER=['기둥','전면빔','공용받침','안전좌','안전핀','우레탄망치','기타부속','선반'];
 const MEDIUM_ORDER=['기둥','전면빔','상부받침','선반받침','안전좌','안전핀','우레탄망치','기타부속','선반'];
 // 순서: 기둥 → 받침류 → 안전좌 → 나머지부속(행거받침,행거봉) → 합판
 const SPEED_ORDER=['기둥','받침','연결받침','행거받침(좌)','행거받침(우)','행거받침','보강대','안전좌','우레탄망치','기타부속','기둥연결브라켓','행거봉','합판'];
@@ -2509,13 +2619,14 @@ const HOMEDENT_ORDER=['기둥','받침','연결받침','행거받침(좌)','행�
 
 function calcParts() {
   const lB={}; LIGHT_ORDER.forEach(l=>lB[l]={});
+  const gvB={}; GALV_ORDER.forEach(l=>gvB[l]={});
   const mB={}; MEDIUM_ORDER.forEach(l=>mB[l]={});
   const sB={}; SPEED_ORDER.forEach(l=>sB[l]={});
   const hB={}; HOMEDENT_ORDER.forEach(l=>hB[l]={});
   const accB={}; // 미사용
   const accOnlyB={}; // 랙 없이 부속만 있을 때
   ['기둥','받침','안전좌','안전핀','우레탄망치','기타부속','합판'].forEach(l => accOnlyB[l] = {});
-  let hasL=false, hasM=false, hasS=false, hasH=false, hasAcc=false;
+  let hasL=false, hasGV=false, hasM=false, hasS=false, hasH=false, hasAcc=false;
 
   function add(buckets, label, part, qty) {
     if (!part?.code) return;
@@ -2535,6 +2646,16 @@ function calcParts() {
       add(lB,'안전좌',   LIGHT_PARTS.안전좌,                          (isIndep?4:2)*mul);
       add(lB,'안전핀',   LIGHT_PARTS.안전핀,                          8*mul);
       add(lB,'선반',     LIGHT_PARTS.선반[`${e.width}*${e.depth}`],   e.shelves*mul);
+
+    } else if (e.rackType==='아연도금랙') {
+      hasGV = true;
+      const isIndep = e.division==='독립형';
+      add(gvB,'기둥',     GALV_PARTS.기둥[e.height],                 (isIndep?4:2)*mul);
+      add(gvB,'전면빔',   GALV_PARTS.전면빔[e.width],                 4*mul);
+      add(gvB,'공용받침', GALV_PARTS.공용받침[e.depth],               e.shelves*2*mul);
+      add(gvB,'안전좌',   GALV_PARTS.안전좌,                          (isIndep?4:2)*mul);
+      add(gvB,'안전핀',   GALV_PARTS.안전핀,                          8*mul);
+      add(gvB,'선반',     GALV_PARTS.선반[`${e.width}*${e.depth}`],   e.shelves*mul);
 
     } else if (e.rackType==='중량랙') {
       hasM = true;
@@ -2713,6 +2834,8 @@ function calcParts() {
     const slot = (e.code === HAMMER_CODE) ? '우레탄망치' : isBo ? '보강대' : isPlywood ? '합판' : '기타부속';
     if (hasL) {
       add(lB, slot, { code:e.code, name:e.name, spec:e.spec }, e.qty);
+    } else if (hasGV) {
+      add(gvB, slot, { code:e.code, name:e.name, spec:e.spec }, e.qty);
     } else if (hasM) {
       add(mB, slot, { code:e.code, name:e.name, spec:e.spec }, e.qty);
     } else if (hasS) {
@@ -2754,6 +2877,7 @@ function calcParts() {
     });
   }
   if (hasL) pushSection('── 경량랙 ──', lB, LIGHT_ORDER);
+  if (hasGV) pushSection('── 아연도금랙 ──', gvB, GALV_ORDER);
   if (hasM) pushSection('── 중량랙 ──', mB, MEDIUM_ORDER);
   if (hasH) pushSection('── 홈던트 ──', hB, HOMEDENT_ORDER);
   if (hasS) pushSection('── 스피드랙 ──', sB, SPEED_ORDER);
@@ -2939,6 +3063,15 @@ function updateSaveCard() {
   const has = entries.length > 0;
   const sc  = document.getElementById('saveCard');
   if (sc) sc.style.display = has && currentUser ? '' : 'none';
+
+  // 아연도금랙은 용차로만 접수 가능 — 운임 선택 강제 고정
+  const freightSel = document.getElementById('recipientFreight');
+  const hasGalv = entries.some(e => e.rackType === '아연도금랙');
+  if (freightSel) {
+    [...freightSel.options].forEach(o => { o.disabled = hasGalv && o.value !== '용차'; });
+    if (hasGalv) freightSel.value = '용차';
+    freightSel.disabled = hasGalv;
+  }
 }
 
 // ── 저장 ──
@@ -2960,11 +3093,13 @@ async function saveOrder() {
   const { error } = await sb.from('orders').insert(data);
   if (error) { showToast('저장 실패: ' + error.message); return; }
   showToast('저장 완료!');
+  const hadGalv = entries.some(e => e.rackType === '아연도금랙');
   // 초기화
   entries = []; qtyOverrides = {}; renderAll();
   ['recipientName','recipientPhone','recipientZip','recipientAddr','orderMemo'].forEach(id => {
     document.getElementById(id).value = '';
   });
+  if (hadGalv) alert('아연도금랙 발주는 담당자에게 출고일정 문의 부탁드립니다.');
 }
 
 // ── 저장 목록 불러오기 ──
@@ -3082,6 +3217,19 @@ async function openOrderModal(id) {
         ).join('')}
       </tbody>
     </table>
+    ${(data.entries && data.entries.length) ? `
+    <div style="margin-top:20px;padding-top:14px;border-top:1px solid var(--border)">
+      <div style="font-size:0.72rem;font-weight:700;color:var(--text2);letter-spacing:0.06em;margin-bottom:8px">📝 입력 항목</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${data.entries.map(e => `
+          <div style="display:flex;gap:10px;align-items:center;padding:8px 12px;background:var(--surface2);border-radius:6px;font-size:0.8rem">
+            <span style="font-weight:700;color:var(--accent2);white-space:nowrap">${e.rackType}${e.division?' '+e.division:''}</span>
+            <span style="color:var(--text);flex:1">${entryLabel(e)}</span>
+            <span style="color:var(--text2);white-space:nowrap">${e.rackType==='부속품' ? `${e.qty}개` : `${e.qty}대`}</span>
+          </div>
+        `).join('')}
+      </div>
+    </div>` : ''}
   `;
   document.getElementById('orderModal').style.display = '';
 }
