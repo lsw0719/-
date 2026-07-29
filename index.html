@@ -204,6 +204,7 @@
     <button class="tab-btn" id="tabInput" onclick="showTab('input')">입력</button>
     <button class="tab-btn" id="tabQuickEntry" onclick="showTab('quickEntry')">텍스트 등록</button>
     <button class="tab-btn" id="tabSaved" onclick="showTab('saved')">저장 목록</button>
+    <button class="tab-btn" id="tabMyInfo" onclick="showTab('myInfo')">내 정보</button>
     <button class="tab-btn" id="tabMembers" style="display:none" onclick="showTab('members')">회원 목록</button>
     <button id="btnLogout" onclick="doLogout()">로그아웃</button>
   </div>
@@ -224,10 +225,17 @@
       <div style="font-weight:700;font-size:1.05rem">텍스트 등록</div>
       <div style="color:var(--text2);font-size:0.8rem;margin-top:4px">붙여넣기로 자동 등록</div>
     </div>
+  </div>
+  <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px">
     <div onclick="showTab('saved')" style="cursor:pointer;flex:1;min-width:200px;padding:28px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center;transition:transform .15s">
       <div style="font-size:2.2rem;margin-bottom:8px">📋</div>
       <div style="font-weight:700;font-size:1.05rem">저장 목록</div>
       <div style="color:var(--text2);font-size:0.8rem;margin-top:4px">저장한 수주 조회</div>
+    </div>
+    <div onclick="showTab('myInfo')" style="cursor:pointer;flex:1;min-width:200px;padding:28px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center;transition:transform .15s">
+      <div style="font-size:2.2rem;margin-bottom:8px">👤</div>
+      <div style="font-weight:700;font-size:1.05rem">내 정보</div>
+      <div style="color:var(--text2);font-size:0.8rem;margin-top:4px">계정 정보 확인/변경</div>
     </div>
   </div>
   <div id="homeMasterRow" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px">
@@ -641,6 +649,33 @@
     </div>
   </div>
   <div id="savedList" style="margin-top:16px"></div>
+</div>
+
+<!-- 내 정보 탭 -->
+<div id="viewMyInfo" style="display:none">
+  <h1>👤 내 정보</h1>
+  <p class="subtitle">계정 정보를 확인하고 비밀번호를 변경할 수 있어요.</p>
+  <div class="card" style="max-width:420px">
+    <div class="field" style="margin-bottom:16px">
+      <label>이메일</label>
+      <input type="text" id="myInfoEmail" disabled style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text2);font-family:inherit;font-size:0.85rem;padding:9px 12px;width:100%">
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px">
+      <div class="card-title" style="margin-bottom:12px">비밀번호 변경</div>
+      <div class="field" style="margin-bottom:10px">
+        <label>새 비밀번호</label>
+        <input type="password" id="myInfoNewPw" placeholder="6자 이상" autocomplete="new-password"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:9px 12px;width:100%">
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label>새 비밀번호 확인</label>
+        <input type="password" id="myInfoNewPw2" placeholder="다시 입력" autocomplete="new-password"
+          style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:9px 12px;width:100%">
+      </div>
+      <button class="btn btn-primary" onclick="changeMyPassword()">비밀번호 변경</button>
+      <div id="myInfoMsg" style="font-size:0.78rem;margin-top:10px"></div>
+    </div>
+  </div>
 </div>
 
 <!-- 회원 목록 탭 (마스터 전용) -->
@@ -3102,13 +3137,16 @@ function showTab(tab) {
   document.getElementById('viewInput').style.display        = tab==='input'      ? '' : 'none';
   document.getElementById('viewQuickEntry').style.display   = tab==='quickEntry' ? '' : 'none';
   document.getElementById('viewSaved').style.display        = tab==='saved'      ? '' : 'none';
+  document.getElementById('viewMyInfo').style.display       = tab==='myInfo'     ? '' : 'none';
   document.getElementById('viewMembers').style.display      = tab==='members'    ? '' : 'none';
   document.getElementById('tabHome').classList.toggle('active', tab==='home');
   document.getElementById('tabInput').classList.toggle('active', tab==='input');
   document.getElementById('tabQuickEntry').classList.toggle('active', tab==='quickEntry');
   document.getElementById('tabSaved').classList.toggle('active', tab==='saved');
+  document.getElementById('tabMyInfo').classList.toggle('active', tab==='myInfo');
   document.getElementById('tabMembers').classList.toggle('active', tab==='members');
   if (tab==='saved') loadSavedOrders();
+  if (tab==='myInfo') loadMyInfo();
   if (tab==='members') loadMembers();
 }
 
@@ -3527,6 +3565,29 @@ async function resetPassword(id, name) {
   const { error } = await sb.rpc('admin_reset_password', { target_user_id: id });
   if (error) { showToast('초기화 실패: ' + error.message); return; }
   showToast(`비밀번호가 asdf1020** 로 초기화되었습니다.`);
+}
+
+// ── 내 정보 ──
+function loadMyInfo() {
+  document.getElementById('myInfoEmail').value = currentUser?.email || '';
+  document.getElementById('myInfoNewPw').value = '';
+  document.getElementById('myInfoNewPw2').value = '';
+  document.getElementById('myInfoMsg').textContent = '';
+}
+
+async function changeMyPassword() {
+  const pw1 = document.getElementById('myInfoNewPw').value;
+  const pw2 = document.getElementById('myInfoNewPw2').value;
+  const msgEl = document.getElementById('myInfoMsg');
+  if (!pw1 || pw1.length < 6) { msgEl.style.color = 'var(--danger)'; msgEl.textContent = '비밀번호는 6자 이상이어야 해요.'; return; }
+  if (pw1 !== pw2) { msgEl.style.color = 'var(--danger)'; msgEl.textContent = '비밀번호가 서로 일치하지 않아요.'; return; }
+  const { error } = await sb.auth.updateUser({ password: pw1 });
+  if (error) { msgEl.style.color = 'var(--danger)'; msgEl.textContent = '변경 실패: ' + error.message; return; }
+  msgEl.style.color = 'var(--accent2)';
+  msgEl.textContent = '비밀번호가 변경되었습니다.';
+  document.getElementById('myInfoNewPw').value = '';
+  document.getElementById('myInfoNewPw2').value = '';
+  showToast('비밀번호 변경 완료!');
 }
 </script>
 
