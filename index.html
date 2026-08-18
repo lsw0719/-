@@ -237,7 +237,6 @@
     <button class="tab-btn" id="tabQuickEntry" onclick="showTab('quickEntry')">텍스트 등록</button>
     <button class="tab-btn" id="tabSaved" onclick="showTab('saved')">저장 목록</button>
     <button class="tab-btn" id="tabMyInfo" onclick="showTab('myInfo')">내 정보</button>
-    <button class="tab-btn" id="tabQuotes" style="display:none" onclick="showTab('quotes')">견적확인</button>
     <button class="tab-btn" id="tabMembers" style="display:none" onclick="showTab('members')">회원 목록</button>
     <button id="btnLogout" onclick="doLogout()">로그아웃</button>
   </div>
@@ -272,11 +271,6 @@
     </div>
   </div>
   <div id="homeMasterRow" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px">
-    <div id="homeQuotesCard" onclick="showTab('quotes')" style="display:none;cursor:pointer;flex:1;min-width:200px;padding:28px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center;transition:transform .15s">
-      <div style="font-size:2.2rem;margin-bottom:8px">💰</div>
-      <div style="font-weight:700;font-size:1.05rem">견적확인</div>
-      <div style="color:var(--text2);font-size:0.8rem;margin-top:4px">품목별 대표 단가 조회</div>
-    </div>
     <div id="homeMembersCard" onclick="showTab('members')" style="display:none;cursor:pointer;flex:1;min-width:200px;padding:28px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center;transition:transform .15s">
       <div style="font-size:2.2rem;margin-bottom:8px">🧑‍🤝‍🧑</div>
       <div style="font-weight:700;font-size:1.05rem">회원 목록</div>
@@ -693,25 +687,6 @@
     </div>
   </div>
   <div id="savedList" style="margin-top:16px"></div>
-</div>
-
-<!-- 견적확인 탭 -->
-<div id="viewQuotes" style="display:none">
-  <h1>💰 견적확인</h1>
-  <p class="subtitle" id="quotesSubtitle">품목별 대표 단가를 조회합니다. (표시된 단가는 참고용이며, 실제 거래 업체별 단가는 다를 수 있습니다.)</p>
-  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
-    <input type="text" id="quotesSearch" placeholder="품번/품명/규격 검색..." oninput="renderQuotesTable()"
-      style="flex:1;min-width:200px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:9px 12px;outline:none">
-    <select id="quotesRackFilter" onchange="renderQuotesTable()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:9px 12px">
-      <option value="">전체 랙 종류</option>
-      <option value="경량랙">경량랙</option>
-      <option value="중량랙">중량랙</option>
-      <option value="스피드랙">스피드랙</option>
-      <option value="홈던트">홈던트</option>
-      <option value="아연도금랙">아연도금랙</option>
-    </select>
-  </div>
-  <div id="quotesList"></div>
 </div>
 
 <!-- 내 정보 탭 -->
@@ -3262,7 +3237,6 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
 let isMaster    = false;
-let canViewPrices = false;
 
 // ── 인증 탭 전환 ──
 function setAuthTab(tab) {
@@ -3306,18 +3280,15 @@ function showTab(tab) {
   document.getElementById('viewInput').style.display        = tab==='input'      ? '' : 'none';
   document.getElementById('viewQuickEntry').style.display   = tab==='quickEntry' ? '' : 'none';
   document.getElementById('viewSaved').style.display        = tab==='saved'      ? '' : 'none';
-  document.getElementById('viewQuotes').style.display        = tab==='quotes'     ? '' : 'none';
   document.getElementById('viewMyInfo').style.display       = tab==='myInfo'     ? '' : 'none';
   document.getElementById('viewMembers').style.display      = tab==='members'    ? '' : 'none';
   document.getElementById('tabHome').classList.toggle('active', tab==='home');
   document.getElementById('tabInput').classList.toggle('active', tab==='input');
   document.getElementById('tabQuickEntry').classList.toggle('active', tab==='quickEntry');
   document.getElementById('tabSaved').classList.toggle('active', tab==='saved');
-  document.getElementById('tabQuotes').classList.toggle('active', tab==='quotes');
   document.getElementById('tabMyInfo').classList.toggle('active', tab==='myInfo');
   document.getElementById('tabMembers').classList.toggle('active', tab==='members');
   if (tab==='saved') loadSavedOrders();
-  if (tab==='quotes') loadQuotes();
   if (tab==='myInfo') loadMyInfo();
   if (tab==='members') loadMembers();
 }
@@ -3326,9 +3297,8 @@ function showTab(tab) {
 sb.auth.onAuthStateChange(async (event, session) => {
   if (session?.user) {
     currentUser = session.user;
-    const { data: profile } = await sb.from('profiles').select('is_master, approved, disabled, can_view_prices').eq('id', currentUser.id).single();
+    const { data: profile } = await sb.from('profiles').select('is_master, approved, disabled').eq('id', currentUser.id).single();
     isMaster = currentUser.email === MASTER_EMAIL || !!profile?.is_master;
-    canViewPrices = isMaster || !!profile?.can_view_prices;
 
     if (profile?.disabled) {
       document.getElementById('appWrap').style.display = 'none';
@@ -3352,14 +3322,11 @@ sb.auth.onAuthStateChange(async (event, session) => {
       `<strong>${currentUser.email}</strong>${isMaster ? ' <span style="color:var(--accent);font-size:0.7rem;font-weight:700">[마스터]</span>' : ''}`;
     document.getElementById('tabMembers').style.display = isMaster ? '' : 'none';
     document.getElementById('homeMembersCard').style.display = isMaster ? '' : 'none';
-    document.getElementById('tabQuotes').style.display = canViewPrices ? '' : 'none';
-    document.getElementById('homeQuotesCard').style.display = canViewPrices ? '' : 'none';
     document.getElementById('accountGroupToggleWrap').style.display = isMaster ? 'flex' : 'none';
     showTab('home');
   } else {
     currentUser = null;
     isMaster    = false;
-    canViewPrices = false;
     document.getElementById('authWrap').style.display = '';
     document.getElementById('appWrap').style.display  = 'none';
   }
@@ -3710,7 +3677,6 @@ async function loadMembers() {
           <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">구분</th>
           <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">승인상태</th>
           <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">권한 관리</th>
-          <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">견적확인</th>
           <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">계정 관리</th>
         </tr>
       </thead>
@@ -3735,16 +3701,6 @@ async function loadMembers() {
                 : m.is_master
                   ? `<button class="btn" style="padding:5px 10px;font-size:0.75rem" onclick="toggleMaster('${m.id}', false, '${(m.name||m.email||'').replace(/'/g,"")}')">마스터 해제</button>`
                   : `<button class="btn btn-copy" style="padding:5px 10px;font-size:0.75rem" onclick="toggleMaster('${m.id}', true, '${(m.name||m.email||'').replace(/'/g,"")}')">마스터로 지정</button>`
-              }
-            </td>
-            <td style="padding:10px 12px">
-              ${m.id === currentUser.id
-                ? '<span style="color:var(--text2);font-size:0.75rem">(본인)</span>'
-                : m.is_master
-                  ? '<span style="color:var(--text2);font-size:0.75rem">항상 가능</span>'
-                  : m.can_view_prices
-                    ? `<button class="btn" style="padding:5px 10px;font-size:0.75rem" onclick="toggleCanViewPrices('${m.id}', false, '${(m.name||m.email||'').replace(/'/g,"")}')">해제</button>`
-                    : `<button class="btn btn-copy" style="padding:5px 10px;font-size:0.75rem" onclick="toggleCanViewPrices('${m.id}', true, '${(m.name||m.email||'').replace(/'/g,"")}')">부여</button>`
               }
             </td>
             <td style="padding:10px 12px">
@@ -3778,75 +3734,6 @@ async function toggleMaster(id, makeMaster, name) {
   loadMembers();
 }
 
-// ── 견적확인 (품목별 대표 단가) ──
-let quotePrices = {}; // code -> price
-
-async function loadQuotes() {
-  const sub = document.getElementById('quotesSubtitle');
-  const { data, error } = await sb.from('item_prices').select('*');
-  if (error) {
-    sub.textContent = '단가 정보를 불러오지 못했어요: ' + error.message;
-    quotePrices = {};
-  } else {
-    quotePrices = {};
-    (data || []).forEach(row => { quotePrices[row.code] = row.price; });
-    sub.textContent = `품목별 대표 단가를 조회합니다. (단가 등록된 품목 ${data.length}개 · 참고용, 실제 업체별 단가는 다를 수 있어요)`;
-  }
-  renderQuotesTable();
-}
-
-function renderQuotesTable() {
-  const list = document.getElementById('quotesList');
-  const q = document.getElementById('quotesSearch').value.trim().toLowerCase();
-  const rackFilter = document.getElementById('quotesRackFilter').value;
-
-  let items = SINGLE_PARTS.filter(p => {
-    if (rackFilter && !p.rack.includes(rackFilter)) return false;
-    if (q && !(p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q) || p.spec.toLowerCase().includes(q))) return false;
-    return true;
-  });
-
-  if (!items.length) { list.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;padding:20px 0">조건에 맞는 품목이 없습니다.</div>'; return; }
-
-  list.innerHTML = `
-    <table style="width:100%;border-collapse:collapse;font-size:0.83rem">
-      <thead>
-        <tr style="border-bottom:1px solid var(--border)">
-          <th style="text-align:left;padding:8px 10px;color:var(--text2);font-weight:600">품번</th>
-          <th style="text-align:left;padding:8px 10px;color:var(--text2);font-weight:600">품명</th>
-          <th style="text-align:left;padding:8px 10px;color:var(--text2);font-weight:600">규격</th>
-          <th style="text-align:right;padding:8px 10px;color:var(--text2);font-weight:600;width:140px">대표 단가</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${items.map(p => {
-          const price = quotePrices[p.code];
-          return `
-          <tr style="border-bottom:1px solid var(--border)">
-            <td style="padding:8px 10px;font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--text2)">${p.code}</td>
-            <td style="padding:8px 10px">${p.name}</td>
-            <td style="padding:8px 10px;color:var(--text2)">${p.spec}</td>
-            <td style="padding:8px 10px;text-align:right">
-              ${isMaster
-                ? `<input type="number" value="${price ?? ''}" placeholder="미등록" style="width:110px;text-align:right;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:0.82rem;padding:5px 8px" onchange="updateQuotePrice('${p.code}', '${p.name.replace(/'/g,"")}', '${p.spec.replace(/'/g,"")}', this.value)">`
-                : (price != null ? Number(price).toLocaleString() + '원' : '<span style="color:var(--text2)">미등록</span>')
-              }
-            </td>
-          </tr>
-        `;}).join('')}
-      </tbody>
-    </table>
-  `;
-}
-
-async function updateQuotePrice(code, name, spec, value) {
-  const price = value === '' ? null : Number(value);
-  const { error } = await sb.from('item_prices').upsert({ code, name, spec, price, updated_at: new Date().toISOString() });
-  if (error) { showToast('저장 실패: ' + error.message); return; }
-  quotePrices[code] = price;
-  showToast('단가 저장 완료!');
-}
-
 async function toggleApproved(id, approve, name) {
   const msg = approve ? `${name} 님의 가입을 승인할까요? 승인해야 로그인할 수 있어요.`
                       : `${name} 님의 승인을 취소할까요? 다시 로그인할 수 없게 됩니다.`;
@@ -3857,15 +3744,6 @@ async function toggleApproved(id, approve, name) {
   loadMembers();
 }
 
-async function toggleCanViewPrices(id, allow, name) {
-  const msg = allow ? `${name} 님에게 견적확인(단가 조회) 권한을 부여할까요?`
-                    : `${name} 님의 견적확인 권한을 해제할까요?`;
-  if (!confirm(msg)) return;
-  const { error } = await sb.from('profiles').update({ can_view_prices: allow }).eq('id', id);
-  if (error) { showToast('변경 실패: ' + error.message); return; }
-  showToast(allow ? '견적확인 권한 부여 완료!' : '견적확인 권한 해제 완료!');
-  loadMembers();
-}
 
 async function toggleDisabled(id, disable, name) {
   const msg = disable ? `${name} 님을 탈퇴 처리할까요? 더 이상 로그인할 수 없게 됩니다. (저장된 주문 기록은 남습니다)`
