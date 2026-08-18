@@ -237,6 +237,7 @@
     <button class="tab-btn" id="tabQuickEntry" onclick="showTab('quickEntry')">텍스트 등록</button>
     <button class="tab-btn" id="tabSaved" onclick="showTab('saved')">저장 목록</button>
     <button class="tab-btn" id="tabMyInfo" onclick="showTab('myInfo')">내 정보</button>
+    <button class="tab-btn" id="tabQuotes" style="display:none" onclick="showTab('quotes')">견적확인</button>
     <button class="tab-btn" id="tabMembers" style="display:none" onclick="showTab('members')">회원 목록</button>
     <button id="btnLogout" onclick="doLogout()">로그아웃</button>
   </div>
@@ -271,6 +272,11 @@
     </div>
   </div>
   <div id="homeMasterRow" style="display:flex;gap:16px;flex-wrap:wrap;margin-top:16px">
+    <div id="homeQuotesCard" onclick="showTab('quotes')" style="display:none;cursor:pointer;flex:1;min-width:200px;padding:28px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center;transition:transform .15s">
+      <div style="font-size:2.2rem;margin-bottom:8px">💰</div>
+      <div style="font-weight:700;font-size:1.05rem">견적확인</div>
+      <div style="color:var(--text2);font-size:0.8rem;margin-top:4px">품목별 대표 단가 조회</div>
+    </div>
     <div id="homeMembersCard" onclick="showTab('members')" style="display:none;cursor:pointer;flex:1;min-width:200px;padding:28px 20px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;text-align:center;transition:transform .15s">
       <div style="font-size:2.2rem;margin-bottom:8px">🧑‍🤝‍🧑</div>
       <div style="font-weight:700;font-size:1.05rem">회원 목록</div>
@@ -660,6 +666,7 @@
 <div id="viewQuickEntry" style="display:none">
   <h1>📋 텍스트로 등록</h1>
   <p class="subtitle">주문 내용을 그대로 붙여넣으면 자동으로 인식해서 저장합니다. 1건이든 여러 건(<code>///</code>로 구분)이든 그냥 넣으면 됩니다.</p>
+
   <div class="card">
     <textarea id="quickEntryText" rows="12" placeholder="경량랙 독립형 1500*600*2100높이 3단&#10;소형우레탄망치 1개&#10;수취인정보&#10;홍길동&#10;010-1234-5678&#10;(12345)&#10;서울특별시 강남구 테헤란로 123 (역삼동) 456호&#10;&#10;(여러 건일 땐 ///로 구분해서 이어 붙이면 됩니다)"
       style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:10px 12px;outline:none;resize:vertical"></textarea>
@@ -686,6 +693,25 @@
     </div>
   </div>
   <div id="savedList" style="margin-top:16px"></div>
+</div>
+
+<!-- 견적확인 탭 -->
+<div id="viewQuotes" style="display:none">
+  <h1>💰 견적확인</h1>
+  <p class="subtitle" id="quotesSubtitle">품목별 대표 단가를 조회합니다. (표시된 단가는 참고용이며, 실제 거래 업체별 단가는 다를 수 있습니다.)</p>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+    <input type="text" id="quotesSearch" placeholder="품번/품명/규격 검색..." oninput="renderQuotesTable()"
+      style="flex:1;min-width:200px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:9px 12px;outline:none">
+    <select id="quotesRackFilter" onchange="renderQuotesTable()" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:inherit;font-size:0.85rem;padding:9px 12px">
+      <option value="">전체 랙 종류</option>
+      <option value="경량랙">경량랙</option>
+      <option value="중량랙">중량랙</option>
+      <option value="스피드랙">스피드랙</option>
+      <option value="홈던트">홈던트</option>
+      <option value="아연도금랙">아연도금랙</option>
+    </select>
+  </div>
+  <div id="quotesList"></div>
 </div>
 
 <!-- 내 정보 탭 -->
@@ -1173,7 +1199,7 @@ function parseOrderBlock(rawText) {
     hammerQty:0, hookQty:0, levelQty:0, lplateQty:0, clipQty:0,
     bogangQty:0, bogangSpec:null,
     curtainQty:0, meshQty:0, meshColor:null, meshDims:null,
-    tierAddQty:0, tierAddDims:null,
+    tierAddQty:0, tierAddDims:null, tierAddIsHanger:false,
     raildividerQty:0, raildividerSize:null,
     wheelQty:0, wheelSize:null,
     sideCurtainQty:0, sideCurtainDims:null,
@@ -1298,6 +1324,7 @@ function parseOrderBlock(rawText) {
       const m = line.match(/(\d+)\s*(?:개|세트)/);
       result.tierAddQty = m ? +m[1] : 1;
       if (dm) result.tierAddDims = { w:+dm[1], d:+dm[2] };
+      result.tierAddIsHanger = /행거/.test(line);
     }
     if (/사이드안전바/.test(line)) {
       const dm = line.match(/(\d{2,4})\s*[\*x×]\s*(\d{2,4})/);
@@ -1622,7 +1649,28 @@ function applyParsedOrder(r) {
     const { w, d } = r.tierAddDims;
     const color = r.color || 'W';
     const thick = r.plywoodThick || 9;
-    if (r.rackType === '스피드랙' || r.rackType === '홈던트') {
+    if (r.tierAddIsHanger && (r.rackType === '스피드랙' || r.rackType === '홈던트')) {
+      const colorWord = color === 'B' ? '블랙' : '화이트';
+      const widthPart = SINGLE_PARTS.find(p => p.cat === '받침' && p.rack.includes(r.rackType) && p.spec === String(w) && p.name.endsWith('/' + colorWord));
+      const hangerTable = r.rackType === '스피드랙' ? SPEED_행거받침 : HOMEDENT_행거받침;
+      const hr = hangerTable[color]?.[d];
+      const hb = SPEED_행거봉[w]; // 스피드랙/홈던트 공용
+      const plyCode = PLYWOOD[thick]?.[`${w}*${d}`] || PLYWOOD[thick]?.[`${d}*${w}`];
+      if (widthPart && hr && hb && plyCode) {
+        entries.push({ id: entryId++, rackType:'부속품', code:widthPart.code, name:widthPart.name, spec:widthPart.spec, qty: 2 * r.tierAddQty });
+        if (hr.single) {
+          entries.push({ id: entryId++, rackType:'부속품', code:hr.single, name:`${r.rackType}/행거받침/${colorWord}`, spec:String(d), qty: 2 * r.tierAddQty });
+        } else {
+          entries.push({ id: entryId++, rackType:'부속품', code:hr.left,  name:`${r.rackType}/행거받침(좌)/${colorWord}`, spec:`${d}(좌)`, qty: r.tierAddQty });
+          entries.push({ id: entryId++, rackType:'부속품', code:hr.right, name:`${r.rackType}/행거받침(우)/${colorWord}`, spec:`${d}(우)`, qty: r.tierAddQty });
+        }
+        entries.push({ id: entryId++, rackType:'부속품', code:hb.code, name:hb.name, spec:hb.spec, qty: r.tierAddQty });
+        entries.push({ id: entryId++, rackType:'부속품', code:plyCode, name:'합판', spec:`${w}*${d}*${thick}T`, qty: r.tierAddQty });
+        applied.push(`행거단추가(${w}*${d}) ${r.tierAddQty}세트`);
+      } else {
+        r.unrecognized.push(`행거단추가 규격(${w}*${d}) 코드 못 찾음`);
+      }
+    } else if (r.rackType === '스피드랙' || r.rackType === '홈던트') {
       const colorWord = color === 'B' ? '블랙' : '화이트';
       const widthPart = SINGLE_PARTS.find(p => p.cat === '받침' && p.rack.includes(r.rackType) && p.spec === String(w) && p.name.endsWith('/' + colorWord));
       const depthPart = SINGLE_PARTS.find(p => p.cat === '받침' && p.rack.includes(r.rackType) && p.spec === String(d) && p.name.endsWith('/' + colorWord));
@@ -3090,9 +3138,9 @@ function calcParts() {
     if (e.name.includes('기둥연결브라켓')) return '기타부속';
     if (e.name.includes('기둥')) return '기둥';
     if (e.name.includes('합판')) return '합판';
-    if (e.name.includes('선반')) return '합판'; // 선반=합판과 같은 자리 취급
     if (e.name.includes('보강대')) return '받침';
-    if (/받침|전면빔/.test(e.name)) return '받침';
+    if (/받침|전면빔/.test(e.name)) return '받침'; // 선반받침/상부받침 등은 받침류로 우선 분류
+    if (e.name.includes('선반')) return '합판'; // 순수 선반(상판)만 합판과 같은 자리 취급
     return '기타부속';
   }
   for (const e of entries) {
@@ -3214,6 +3262,7 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 let currentUser = null;
 let isMaster    = false;
+let canViewPrices = false;
 
 // ── 인증 탭 전환 ──
 function setAuthTab(tab) {
@@ -3257,15 +3306,18 @@ function showTab(tab) {
   document.getElementById('viewInput').style.display        = tab==='input'      ? '' : 'none';
   document.getElementById('viewQuickEntry').style.display   = tab==='quickEntry' ? '' : 'none';
   document.getElementById('viewSaved').style.display        = tab==='saved'      ? '' : 'none';
+  document.getElementById('viewQuotes').style.display        = tab==='quotes'     ? '' : 'none';
   document.getElementById('viewMyInfo').style.display       = tab==='myInfo'     ? '' : 'none';
   document.getElementById('viewMembers').style.display      = tab==='members'    ? '' : 'none';
   document.getElementById('tabHome').classList.toggle('active', tab==='home');
   document.getElementById('tabInput').classList.toggle('active', tab==='input');
   document.getElementById('tabQuickEntry').classList.toggle('active', tab==='quickEntry');
   document.getElementById('tabSaved').classList.toggle('active', tab==='saved');
+  document.getElementById('tabQuotes').classList.toggle('active', tab==='quotes');
   document.getElementById('tabMyInfo').classList.toggle('active', tab==='myInfo');
   document.getElementById('tabMembers').classList.toggle('active', tab==='members');
   if (tab==='saved') loadSavedOrders();
+  if (tab==='quotes') loadQuotes();
   if (tab==='myInfo') loadMyInfo();
   if (tab==='members') loadMembers();
 }
@@ -3274,8 +3326,9 @@ function showTab(tab) {
 sb.auth.onAuthStateChange(async (event, session) => {
   if (session?.user) {
     currentUser = session.user;
-    const { data: profile } = await sb.from('profiles').select('is_master, approved, disabled').eq('id', currentUser.id).single();
+    const { data: profile } = await sb.from('profiles').select('is_master, approved, disabled, can_view_prices').eq('id', currentUser.id).single();
     isMaster = currentUser.email === MASTER_EMAIL || !!profile?.is_master;
+    canViewPrices = isMaster || !!profile?.can_view_prices;
 
     if (profile?.disabled) {
       document.getElementById('appWrap').style.display = 'none';
@@ -3299,11 +3352,14 @@ sb.auth.onAuthStateChange(async (event, session) => {
       `<strong>${currentUser.email}</strong>${isMaster ? ' <span style="color:var(--accent);font-size:0.7rem;font-weight:700">[마스터]</span>' : ''}`;
     document.getElementById('tabMembers').style.display = isMaster ? '' : 'none';
     document.getElementById('homeMembersCard').style.display = isMaster ? '' : 'none';
+    document.getElementById('tabQuotes').style.display = canViewPrices ? '' : 'none';
+    document.getElementById('homeQuotesCard').style.display = canViewPrices ? '' : 'none';
     document.getElementById('accountGroupToggleWrap').style.display = isMaster ? 'flex' : 'none';
     showTab('home');
   } else {
     currentUser = null;
     isMaster    = false;
+    canViewPrices = false;
     document.getElementById('authWrap').style.display = '';
     document.getElementById('appWrap').style.display  = 'none';
   }
@@ -3414,7 +3470,9 @@ async function loadSavedOrders() {
     sb.from('orders').delete().lt('created_at', cutoff).then(() => {}).catch(() => {});
   }
 
-  let query = sb.from('orders').select('*, profiles(name, email)').order('created_at', { ascending: false });
+  let query = sb.from('orders')
+    .select('id, recipient_name, phone, zipcode, address, freight_type, memo, erp_submitted, created_at, user_id, profiles(name, email)')
+    .order('created_at', { ascending: false });
   if (!isMaster) query = query.eq('user_id', currentUser.id);
 
   const { data: raw, error } = await query;
@@ -3652,6 +3710,7 @@ async function loadMembers() {
           <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">구분</th>
           <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">승인상태</th>
           <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">권한 관리</th>
+          <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">견적확인</th>
           <th style="text-align:left;padding:10px 12px;color:var(--text2);font-weight:600">계정 관리</th>
         </tr>
       </thead>
@@ -3676,6 +3735,16 @@ async function loadMembers() {
                 : m.is_master
                   ? `<button class="btn" style="padding:5px 10px;font-size:0.75rem" onclick="toggleMaster('${m.id}', false, '${(m.name||m.email||'').replace(/'/g,"")}')">마스터 해제</button>`
                   : `<button class="btn btn-copy" style="padding:5px 10px;font-size:0.75rem" onclick="toggleMaster('${m.id}', true, '${(m.name||m.email||'').replace(/'/g,"")}')">마스터로 지정</button>`
+              }
+            </td>
+            <td style="padding:10px 12px">
+              ${m.id === currentUser.id
+                ? '<span style="color:var(--text2);font-size:0.75rem">(본인)</span>'
+                : m.is_master
+                  ? '<span style="color:var(--text2);font-size:0.75rem">항상 가능</span>'
+                  : m.can_view_prices
+                    ? `<button class="btn" style="padding:5px 10px;font-size:0.75rem" onclick="toggleCanViewPrices('${m.id}', false, '${(m.name||m.email||'').replace(/'/g,"")}')">해제</button>`
+                    : `<button class="btn btn-copy" style="padding:5px 10px;font-size:0.75rem" onclick="toggleCanViewPrices('${m.id}', true, '${(m.name||m.email||'').replace(/'/g,"")}')">부여</button>`
               }
             </td>
             <td style="padding:10px 12px">
@@ -3709,6 +3778,75 @@ async function toggleMaster(id, makeMaster, name) {
   loadMembers();
 }
 
+// ── 견적확인 (품목별 대표 단가) ──
+let quotePrices = {}; // code -> price
+
+async function loadQuotes() {
+  const sub = document.getElementById('quotesSubtitle');
+  const { data, error } = await sb.from('item_prices').select('*');
+  if (error) {
+    sub.textContent = '단가 정보를 불러오지 못했어요: ' + error.message;
+    quotePrices = {};
+  } else {
+    quotePrices = {};
+    (data || []).forEach(row => { quotePrices[row.code] = row.price; });
+    sub.textContent = `품목별 대표 단가를 조회합니다. (단가 등록된 품목 ${data.length}개 · 참고용, 실제 업체별 단가는 다를 수 있어요)`;
+  }
+  renderQuotesTable();
+}
+
+function renderQuotesTable() {
+  const list = document.getElementById('quotesList');
+  const q = document.getElementById('quotesSearch').value.trim().toLowerCase();
+  const rackFilter = document.getElementById('quotesRackFilter').value;
+
+  let items = SINGLE_PARTS.filter(p => {
+    if (rackFilter && !p.rack.includes(rackFilter)) return false;
+    if (q && !(p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q) || p.spec.toLowerCase().includes(q))) return false;
+    return true;
+  });
+
+  if (!items.length) { list.innerHTML = '<div style="color:var(--text2);font-size:0.85rem;padding:20px 0">조건에 맞는 품목이 없습니다.</div>'; return; }
+
+  list.innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-size:0.83rem">
+      <thead>
+        <tr style="border-bottom:1px solid var(--border)">
+          <th style="text-align:left;padding:8px 10px;color:var(--text2);font-weight:600">품번</th>
+          <th style="text-align:left;padding:8px 10px;color:var(--text2);font-weight:600">품명</th>
+          <th style="text-align:left;padding:8px 10px;color:var(--text2);font-weight:600">규격</th>
+          <th style="text-align:right;padding:8px 10px;color:var(--text2);font-weight:600;width:140px">대표 단가</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map(p => {
+          const price = quotePrices[p.code];
+          return `
+          <tr style="border-bottom:1px solid var(--border)">
+            <td style="padding:8px 10px;font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--text2)">${p.code}</td>
+            <td style="padding:8px 10px">${p.name}</td>
+            <td style="padding:8px 10px;color:var(--text2)">${p.spec}</td>
+            <td style="padding:8px 10px;text-align:right">
+              ${isMaster
+                ? `<input type="number" value="${price ?? ''}" placeholder="미등록" style="width:110px;text-align:right;background:var(--surface2);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:inherit;font-size:0.82rem;padding:5px 8px" onchange="updateQuotePrice('${p.code}', '${p.name.replace(/'/g,"")}', '${p.spec.replace(/'/g,"")}', this.value)">`
+                : (price != null ? Number(price).toLocaleString() + '원' : '<span style="color:var(--text2)">미등록</span>')
+              }
+            </td>
+          </tr>
+        `;}).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+async function updateQuotePrice(code, name, spec, value) {
+  const price = value === '' ? null : Number(value);
+  const { error } = await sb.from('item_prices').upsert({ code, name, spec, price, updated_at: new Date().toISOString() });
+  if (error) { showToast('저장 실패: ' + error.message); return; }
+  quotePrices[code] = price;
+  showToast('단가 저장 완료!');
+}
+
 async function toggleApproved(id, approve, name) {
   const msg = approve ? `${name} 님의 가입을 승인할까요? 승인해야 로그인할 수 있어요.`
                       : `${name} 님의 승인을 취소할까요? 다시 로그인할 수 없게 됩니다.`;
@@ -3716,6 +3854,16 @@ async function toggleApproved(id, approve, name) {
   const { error } = await sb.from('profiles').update({ approved: approve }).eq('id', id);
   if (error) { showToast('변경 실패: ' + error.message); return; }
   showToast(approve ? '승인 완료!' : '승인 취소 완료!');
+  loadMembers();
+}
+
+async function toggleCanViewPrices(id, allow, name) {
+  const msg = allow ? `${name} 님에게 견적확인(단가 조회) 권한을 부여할까요?`
+                    : `${name} 님의 견적확인 권한을 해제할까요?`;
+  if (!confirm(msg)) return;
+  const { error } = await sb.from('profiles').update({ can_view_prices: allow }).eq('id', id);
+  if (error) { showToast('변경 실패: ' + error.message); return; }
+  showToast(allow ? '견적확인 권한 부여 완료!' : '견적확인 권한 해제 완료!');
   loadMembers();
 }
 
