@@ -592,6 +592,12 @@
         <option value="raildivider-home-500">홈던트/부속/레일디바이더세트/N (500mm)</option>
         <option value="raildivider-home-600">홈던트/부속/레일디바이더세트/N (600mm)</option>
         <option value="raildivider-home-800">홈던트/부속/레일디바이더세트/N (800mm)</option>
+        <option value="corner-hanger-1950-w">홈던트/코너연결형행거 기본세트 1950 (화이트,2단)</option>
+        <option value="corner-hanger-1950-b">홈던트/코너연결형행거 기본세트 1950 (블랙,2단)</option>
+        <option value="corner-hanger-2100-w">홈던트/코너연결형행거 기본세트 2100 (화이트,2단)</option>
+        <option value="corner-hanger-2100-b">홈던트/코너연결형행거 기본세트 2100 (블랙,2단)</option>
+        <option value="corner-tieradd-w">홈던트/코너연결형 단추가 (화이트,+1단)</option>
+        <option value="corner-tieradd-b">홈던트/코너연결형 단추가 (블랙,+1단)</option>
       </select>
     </div>
     <!-- 규격 선택 (커튼류 선택 시 표시) -->
@@ -872,13 +878,18 @@ const SPEED_기둥 = {
      2100:'3S21B000210',2400:'3S21B000240'},
 };
 const SPEED_받침 = {
-  W:{300:'3S22W000030',400:'3S22W000040',500:'3S22W000050',600:'3S22W000060',
-     700:'3S22W000070',800:'3S22W000080',900:'3S22W000090',1000:'3S22W000100',
+  W:{300:'3S12C000030',400:'3S12C000040',500:'3S12C000050',600:'3S12C000060',
+     700:'3S12C000070',800:'3S22W000080',900:'3S22W000090',1000:'3S22W000100',
      1100:'3S22W000110',1200:'3S22W000120',1500:'3S22W000150'},
-  B:{300:'3S22B000030',400:'3S22B000040',500:'3S22B000050',600:'3S22B000060',
-     700:'3S22B000070',800:'3S22B000080',900:'3S22B000090',1000:'3S22B000100',
+  B:{300:'3S12B000030',400:'3S12B000040',500:'3S12B000050',600:'3S12B000060',
+     700:'3S12B000070',800:'3S22B000080',900:'3S22B000090',1000:'3S22B000100',
      1100:'3S22B000110',1200:'3S22B000120',1500:'3S22B000150'},
 };
+// 받침 규격 300~700(1.6t 계열)은 2026-09-01부터 120코드로 변경됨 (200/800은 기존 160코드 유지)
+const SPEED_받침_120_규격 = [300, 400, 500, 600, 700];
+function speedBatchimTag(thickTag, spec) {
+  return (thickTag === '160' && SPEED_받침_120_규격.includes(Number(spec))) ? '120' : thickTag;
+}
 const SPEED_연결받침 = {
   W:{300:'3S23W000030',400:'3S23W000040',500:'3S23W000050',600:'3S23W000060'},
   B:{300:'3S23B000030',400:'3S23B000040',500:'3S23B000050',600:'3S23B000060'},
@@ -1015,6 +1026,12 @@ const HOMEDENT_행거받침 = {
     500: { single:'4S23B100050V2' },
     600: { single:'4S23B200060V2' },
   },
+};
+
+// 코너연결브라켓 (코너형 전용)
+const HOMEDENT_코너브라켓 = {
+  W: { L:'3S56W005663L', R:'3S56W005663R' },
+  B: { L:'3S56B005663L', R:'3S56B005663R' },
 };
 
 // 홈던트 행거형 가능 가로 (행거받침 있는 것만)
@@ -1157,6 +1174,8 @@ function normalizeOrderText(text) {
     /L\s*형\s*플레이트/g,
     new RegExp(NB + '사이드안전바', 'g'),
     new RegExp(NB + '레일디바이더세트', 'g'),
+    new RegExp(NB + '단품코너행거', 'g'),
+    new RegExp(NB + '코너행거', 'g'),
     new RegExp(NB + '수취인정보', 'g'),
     new RegExp(NB + '배송지', 'g'),
     new RegExp(NB + '메모\\s', 'g'),
@@ -1175,6 +1194,7 @@ function parseOrderBlock(rawText) {
     bogangQty:0, bogangSpec:null,
     curtainQty:0, meshQty:0, meshColor:null, meshDims:null,
     tierAddQty:0, tierAddDims:null, tierAddIsHanger:false,
+    cornerQty:0, cornerHeight:null, cornerTiers:2,
     raildividerQty:0, raildividerSize:null,
     wheelQty:0, wheelSize:null,
     sideCurtainQty:0, sideCurtainDims:null,
@@ -1301,6 +1321,14 @@ function parseOrderBlock(rawText) {
       if (dm) result.tierAddDims = { w:+dm[1], d:+dm[2] };
       result.tierAddIsHanger = /행거/.test(line);
     }
+    if (/코너행거|코너연결형/.test(line)) {
+      const heightMatch = line.match(/(\d{3,4})\s*높이/);
+      const tierMatch = line.match(/(\d+)\s*단(?!추가)/);
+      const setMatch = line.match(/(\d+)\s*세트/);
+      result.cornerHeight = heightMatch ? +heightMatch[1] : null;
+      result.cornerTiers = tierMatch ? +tierMatch[1] : 2;
+      result.cornerQty = setMatch ? +setMatch[1] : 1;
+    }
     if (/사이드안전바/.test(line)) {
       const dm = line.match(/(\d{2,4})\s*[\*x×]\s*(\d{2,4})/);
       const m = line.match(/(\d+)\s*(?:개|세트)/);
@@ -1338,7 +1366,7 @@ function parseOrderBlock(rawText) {
     /\d{3,4}\s*[\*x×]\s*\d{3,4}\s*[\*x×]\s*\d{3,4}/,
     /\d{2,4}\s*[\*x×]\s*\d{2,4}/,
     /망치/, /후크/, /조절좌/, /L\s*형\s*플레이트/i, /고정클립|클립/, /보강대/,
-    /정면커튼|커튼봉|커튼세트/, /사이드커튼/, /메쉬보드/, /단추가/, /사이드안전바/, /레일디바이더/, /바퀴/, /서랍/,
+    /정면커튼|커튼봉|커튼세트/, /사이드커튼/, /메쉬보드/, /단추가/, /사이드안전바/, /레일디바이더/, /바퀴/, /서랍/, /코너행거|코너연결형/,
   ];
   specLines.forEach(line => {
     const recognized = RECOGNIZED_PATTERNS.some(re => re.test(line));
@@ -1709,6 +1737,27 @@ function applyParsedOrder(r) {
     applied.push(`3단서랍장세트(${r.color === 'B' ? '블랙' : '화이트'}) ${r.drawerQty}개`);
   }
 
+  // 코너연결형 행거 (기본 2단 세트 + 필요시 단추가로 단수 보충)
+  if (r.cornerQty > 0) {
+    const color = r.color === 'B' ? 'B' : 'W';
+    const colorSuffix = color === 'B' ? 'b' : 'w';
+    if (r.cornerHeight && r.cornerHeight !== 1950 && r.cornerHeight !== 2100) {
+      r.unrecognized.push(`코너연결형 높이(${r.cornerHeight}) 미지원 — 1950 또는 2100만 가능`);
+    } else {
+      const height = r.cornerHeight === 2100 ? 2100 : 1950;
+      document.getElementById('acc-select').value = `corner-hanger-${height}-${colorSuffix}`;
+      document.getElementById('acc-qty').value = r.cornerQty;
+      addAccessory();
+      const extraTiers = Math.max(0, (r.cornerTiers || 2) - 2);
+      if (extraTiers > 0) {
+        document.getElementById('acc-select').value = `corner-tieradd-${colorSuffix}`;
+        document.getElementById('acc-qty').value = extraTiers * r.cornerQty;
+        addAccessory();
+      }
+      applied.push(`코너연결형행거(${height}) ${r.cornerTiers}단 ${r.cornerQty}세트`);
+    }
+  }
+
   if (r.name)    document.getElementById('recipientName').value  = r.name;
   if (r.phone)   document.getElementById('recipientPhone').value = r.phone;
   if (r.zip)     document.getElementById('recipientZip').value   = r.zip;
@@ -1744,7 +1793,7 @@ async function submitQuickEntry() {
     const r = parseOrderBlock(blocks[i]);
     const hasAnyAction = r.rackType || r.plywoodDims.length || r.drawerQty || r.wheelQty ||
       r.hammerQty || r.hookQty || r.levelQty || r.lplateQty || r.clipQty || r.bogangQty ||
-      r.curtainQty || r.sideCurtainQty || r.meshQty || r.tierAddQty || r.raildividerQty || r.sidebarQty;
+      r.curtainQty || r.sideCurtainQty || r.meshQty || r.tierAddQty || r.raildividerQty || r.sidebarQty || r.cornerQty;
     if (!hasAnyAction) {
       report.push({ n:i+1, ok:false, msg:'랙 종류/합판 규격을 인식하지 못해 건너뜀', name:r.name || '(이름 미상)' });
       continue;
@@ -2288,7 +2337,67 @@ const ACC_PARTS = {
       { code:'2C56S060770', name:'홈던트/부속/멀티레일디바이더프레임파이프/N', spec:'6*770', qty:4 },
     ],
   },
+  'corner-hanger-1950-w': { label:'코너연결형 행거 기본세트 1950 (화이트, 2단)', speedHome: true,
+    items: cornerHangerSet(1950, 'W') },
+  'corner-hanger-1950-b': { label:'코너연결형 행거 기본세트 1950 (블랙, 2단)', speedHome: true,
+    items: cornerHangerSet(1950, 'B') },
+  'corner-hanger-2100-w': { label:'코너연결형 행거 기본세트 2100 (화이트, 2단)', speedHome: true,
+    items: cornerHangerSet(2100, 'W') },
+  'corner-hanger-2100-b': { label:'코너연결형 행거 기본세트 2100 (블랙, 2단)', speedHome: true,
+    items: cornerHangerSet(2100, 'B') },
+  'corner-tieradd-w': {
+    label:'코너연결형 단추가 (화이트, +1단)',
+    speedHome: true,
+    items:[
+      { code: PLYWOOD[9]['500*500'], name:'합판', spec:'500*500*9T', qty:1 },
+      { code: PLYWOOD[9]['1000*500'], name:'합판', spec:'1000*500*9T', qty:1 },
+      { code: HOMEDENT_받침.W[500], name:'홈던트/120/받침/화이트', spec:'500', qty:6 },
+      { code: HOMEDENT_받침.W[1000], name:'홈던트/120/받침/화이트', spec:'1000', qty:2 },
+      { code: HOMEDENT_코너브라켓.W.L, name:'홈던트/부속/코너연결브라켓(좌)/화이트', spec:'58.6*58*60.8', qty:1 },
+      { code: HOMEDENT_코너브라켓.W.R, name:'홈던트/부속/코너연결브라켓(우)/화이트', spec:'58.6*58*60.8', qty:1 },
+    ],
+  },
+  'corner-tieradd-b': {
+    label:'코너연결형 단추가 (블랙, +1단)',
+    speedHome: true,
+    items:[
+      { code: PLYWOOD[9]['500*500'], name:'합판', spec:'500*500*9T', qty:1 },
+      { code: PLYWOOD[9]['1000*500'], name:'합판', spec:'1000*500*9T', qty:1 },
+      { code: HOMEDENT_받침.B[500], name:'홈던트/120/받침/블랙', spec:'500', qty:6 },
+      { code: HOMEDENT_받침.B[1000], name:'홈던트/120/받침/블랙', spec:'1000', qty:2 },
+      { code: HOMEDENT_코너브라켓.B.L, name:'홈던트/부속/코너연결브라켓(좌)/블랙', spec:'58.6*58*60.8', qty:1 },
+      { code: HOMEDENT_코너브라켓.B.R, name:'홈던트/부속/코너연결브라켓(우)/블랙', spec:'58.6*58*60.8', qty:1 },
+    ],
+  },
 };
+
+// 코너연결형 행거 기본세트 (2단: 일반 1단 + 행거 1단, 우레탄망치/리버후크는 별도 추가)
+function cornerHangerSet(height, color) {
+  const cl = color === 'B' ? '블랙' : '화이트';
+  const combo = HOMEDENT_기둥조합[height];
+  const items = [];
+  if (combo) {
+    const [h1, h2] = combo;
+    if (h1 === h2) {
+      items.push({ code: HOMEDENT_기둥[color][h1], name:`홈던트/부속/기둥/${cl}`, spec:String(h1), qty:12 });
+    } else {
+      items.push({ code: HOMEDENT_기둥[color][h1], name:`홈던트/부속/기둥/${cl}`, spec:String(h1), qty:6 });
+      items.push({ code: HOMEDENT_기둥[color][h2], name:`홈던트/부속/기둥/${cl}`, spec:String(h2), qty:6 });
+    }
+  }
+  items.push({ code: HOMEDENT_안전좌[color], name:`홈던트/부속/안전좌/${cl}`, spec:'검정/백색', qty:16 });
+  items.push({ code: HOMEDENT_브라켓[color], name:`홈던트/부속/기둥연결브라켓/${cl}`, spec:'-', qty:6 });
+  items.push({ code: PLYWOOD[9]['1000*500'], name:'합판', spec:'1000*500*9T', qty:2 });
+  items.push({ code: PLYWOOD[9]['500*500'], name:'합판', spec:'500*500*9T', qty:2 });
+  items.push({ code: SPEED_행거봉[500].code, name:SPEED_행거봉[500].name, spec:SPEED_행거봉[500].spec, qty:1 });
+  items.push({ code: SPEED_행거봉[1000].code, name:SPEED_행거봉[1000].name, spec:SPEED_행거봉[1000].spec, qty:1 });
+  items.push({ code: HOMEDENT_받침[color][500], name:`홈던트/120/받침/${cl}`, spec:'500', qty:8 });
+  items.push({ code: HOMEDENT_받침[color][1000], name:`홈던트/120/받침/${cl}`, spec:'1000', qty:4 });
+  items.push({ code: HOMEDENT_행거받침[color][500].single, name:`홈던트/160/행거받침/${cl}`, spec:'500', qty:4 });
+  items.push({ code: HOMEDENT_코너브라켓[color].L, name:`홈던트/부속/코너연결브라켓(좌)/${cl}`, spec:'58.6*58*60.8', qty:2 });
+  items.push({ code: HOMEDENT_코너브라켓[color].R, name:`홈던트/부속/코너연결브라켓(우)/${cl}`, spec:'58.6*58*60.8', qty:2 });
+  return items;
+}
 
 function updateAccOptions() {
   const sel = document.getElementById('acc-select');
@@ -2302,7 +2411,7 @@ function updateAccOptions() {
     if (isLightMedium) {
       opt.style.display = (v === 'hammer' || v === 'wheel-light') ? '' : 'none';
     } else if (isSpeed) {
-      opt.style.display = (v.startsWith('curtain-home') || v.startsWith('clip-home') || v.startsWith('mesh-home') || v === 'level-home-6' || v === 'wheel-light' || v.startsWith('wheel-home') || v.startsWith('drawer3-home') || v.startsWith('raildivider-home')) ? 'none' : '';
+      opt.style.display = (v.startsWith('curtain-home') || v.startsWith('clip-home') || v.startsWith('mesh-home') || v === 'level-home-6' || v === 'wheel-light' || v.startsWith('wheel-home') || v.startsWith('drawer3-home') || v.startsWith('raildivider-home') || v.startsWith('corner-')) ? 'none' : '';
     } else if (isHome) {
       opt.style.display = (v.startsWith('curtain-speed') || v.startsWith('clip-speed') || v.startsWith('mesh-speed') || v.startsWith('level-speed') || v === 'wheel-light' || v.startsWith('wheel-speed')) ? 'none' : '';
     } else {
@@ -2706,7 +2815,7 @@ const SINGLE_PARTS = (() => {
   ));
   // 스피드랙 받침
   ['W','B'].forEach(c => Object.entries(SPEED_받침[c]).forEach(([spec, code]) =>
-    add(code, `스피드랙/160/받침/${c==='W'?'화이트':'블랙'}`, spec, ['스피드랙'], '받침')
+    add(code, `스피드랙/${speedBatchimTag('160', spec)}/받침/${c==='W'?'화이트':'블랙'}`, spec, ['스피드랙'], '받침')
   ));
   // 스피드랙 연결받침
   ['W','B'].forEach(c => Object.entries(SPEED_연결받침[c]).forEach(([spec, code]) =>
@@ -2993,11 +3102,11 @@ function calcParts() {
       // 받침(가로) — 행거형은 (단수-행거단수)×2, 나머지는 단수×2
       const wc = T.받침[e.color]?.[e.width];
       const garo = e.shelves;
-      if (wc) add(sB,'받침',{code:wc,name:`스피드랙/${thickTag}/받침/${cl}`,spec:String(e.width)},garo*2*mul);
+      if (wc) add(sB,'받침',{code:wc,name:`스피드랙/${speedBatchimTag(thickTag,e.width)}/받침/${cl}`,spec:String(e.width)},garo*2*mul);
 
       if (e.division==='독립형') {
         const dc = T.받침[e.color]?.[e.depth];
-        if (dc) add(sB,'받침',{code:dc,name:`스피드랙/${thickTag}/받침/${cl}`,spec:String(e.depth)},e.shelves*2*mul);
+        if (dc) add(sB,'받침',{code:dc,name:`스피드랙/${speedBatchimTag(thickTag,e.depth)}/받침/${cl}`,spec:String(e.depth)},e.shelves*2*mul);
 
       } else if (e.division==='연결형') {
         const cc = T.연결받침[e.color]?.[e.connDepth];
@@ -3009,7 +3118,7 @@ function calcParts() {
         const normalShelves = e.shelves - e.hangerShelves;
         const dc = T.받침[e.color]?.[e.depth];
         if (dc && normalShelves > 0) {
-          add(sB,'받침',{code:dc,name:`스피드랙/${thickTag}/받침/${cl}`,spec:String(e.depth)},normalShelves*2*mul);
+          add(sB,'받침',{code:dc,name:`스피드랙/${speedBatchimTag(thickTag,e.depth)}/받침/${cl}`,spec:String(e.depth)},normalShelves*2*mul);
         }
 
         // 행거받침: 400은 좌/우 각 행거단수개, 500/600은 행거단수×2개 (두께 구분 없이 공용)
