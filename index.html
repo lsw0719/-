@@ -399,7 +399,7 @@
           <option value="2400">2400</option>
         </select>
       </div>
-      <div class="field"><label>전면빔 / 가로 (mm)</label>
+      <div class="field"><label>가로받침 / 가로 (mm)</label>
         <select id="m-width">
           <option value="900">900</option>
           <option value="1200" selected>1200</option>
@@ -756,21 +756,18 @@ const MEDIUM_PARTS = {
     2100:{code:'2E000002100',name:'중량랙/기둥/W',spec:'2100'},
     2400:{code:'2E000002400',name:'중량랙/기둥/W',spec:'2400'},
   },
-  상부받침: {
-    450:{code:'2E9W0000450',name:'중량랙/상부받침/W',spec:'450'},
-    600:{code:'2E9W0000600',name:'중량랙/상부받침/W',spec:'600'},
-    900:{code:'2E9W0000900',name:'중량랙/상부받침/W',spec:'900'},
+  // 자체제작 코드 (10/6 출고분부터): 기존 상부받침+선반받침을 공용받침 하나로 통합
+  공용받침: {
+    450:{code:'3E9WS000450',name:'중량랙/규격/공용받침/W',spec:'450'},
+    600:{code:'3E9WS000600',name:'중량랙/규격/공용받침/W',spec:'600'},
+    900:{code:'3E9WS000900',name:'중량랙/규격/공용받침/W',spec:'900'},
   },
-  선반받침: {
-    450:{code:'3E9W0000450',name:'중량랙/선반받침/W',spec:'450'},
-    600:{code:'3E9W0000600',name:'중량랙/선반받침/W',spec:'600'},
-    900:{code:'3E9W0000900',name:'중량랙/선반받침/W',spec:'900'},
-  },
-  전면빔: {
-    900: {code:'3D9W0000090',name:'중량랙/전면빔/W',spec:'900'},
-    1200:{code:'3D9W0000120',name:'중량랙/전면빔/W',spec:'1200'},
-    1500:{code:'3D9W0000150',name:'중량랙/전면빔/W',spec:'1500'},
-    1800:{code:'3D9W0000180',name:'중량랙/전면빔/W',spec:'1800'},
+  // 자체제작 코드 (10/6 출고분부터): 기존 전면빔 → 가로받침으로 명칭/코드 변경
+  가로받침: {
+    900: {code:'3D9WS000090',name:'중량랙/규격/가로받침/W',spec:'900'},
+    1200:{code:'3D9WS000120',name:'중량랙/규격/가로받침/W',spec:'1200'},
+    1500:{code:'3D9WS000150',name:'중량랙/규격/가로받침/W',spec:'1500'},
+    1800:{code:'3D9WS000180',name:'중량랙/규격/가로받침/W',spec:'1800'},
   },
   선반: {
     '900*450': {code:'4D9W0900450',name:'중량랙/선반/W',spec:'900*450'},
@@ -879,14 +876,14 @@ const SPEED_기둥 = {
 };
 const SPEED_받침 = {
   W:{300:'3S12C000030',400:'3S12C000040',500:'3S12C000050',600:'3S12C000060',
-     700:'3S12C000070',800:'3S22W000080',900:'3S22W000090',1000:'3S22W000100',
+     700:'3S12C000070',800:'3S12C000080',900:'3S22W000090',1000:'3S22W000100',
      1100:'3S22W000110',1200:'3S22W000120',1500:'3S22W000150'},
   B:{300:'3S12B000030',400:'3S12B000040',500:'3S12B000050',600:'3S12B000060',
-     700:'3S12B000070',800:'3S22B000080',900:'3S22B000090',1000:'3S22B000100',
+     700:'3S12B000070',800:'3S12B000080',900:'3S22B000090',1000:'3S22B000100',
      1100:'3S22B000110',1200:'3S22B000120',1500:'3S22B000150'},
 };
-// 받침 규격 300~700(1.6t 계열)은 2026-09-01부터 120코드로 변경됨 (200/800은 기존 160코드 유지)
-const SPEED_받침_120_규격 = [300, 400, 500, 600, 700];
+// 받침 규격 300~800(1.6t 계열)은 120코드로 변경됨 (200은 아직 기존 160코드 유지)
+const SPEED_받침_120_규격 = [300, 400, 500, 600, 700, 800];
 function speedBatchimTag(thickTag, spec) {
   return (thickTag === '160' && SPEED_받침_120_규격.includes(Number(spec))) ? '120' : thickTag;
 }
@@ -1456,8 +1453,8 @@ function applyParsedOrder(r) {
     r.rackDims.forEach(d => {
       const division = d.division || r.division || '독립형';
       document.getElementById('m-division').value = division;
-      if (d.width && MEDIUM_PARTS.전면빔[d.width]) document.getElementById('m-width').value = d.width;
-      if (d.depth && MEDIUM_PARTS.상부받침[d.depth]) document.getElementById('m-depth').value = d.depth;
+      if (d.width && MEDIUM_PARTS.가로받침[d.width]) document.getElementById('m-width').value = d.width;
+      if (d.depth && MEDIUM_PARTS.공용받침[d.depth]) document.getElementById('m-depth').value = d.depth;
       if (d.height && MEDIUM_PARTS.기둥[d.height]) document.getElementById('m-height').value = d.height;
       if (d.shelves) document.getElementById('m-shelves').value = d.shelves;
       document.getElementById('m-qty').value = d.qty || 1;
@@ -1697,7 +1694,7 @@ function applyParsedOrder(r) {
         r.unrecognized.push(`단추가 규격(${w}*${d}) 코드 못 찾음`);
       }
     } else if (r.rackType === '중량랙') {
-      const depthPart = SINGLE_PARTS.find(p => p.cat === '선반받침' && p.rack.includes('중량랙') && p.spec === String(d));
+      const depthPart = SINGLE_PARTS.find(p => p.cat === '공용받침' && p.rack.includes('중량랙') && p.spec === String(d));
       const shelfPart = SINGLE_PARTS.find(p => p.cat === '선반' && p.rack.includes('중량랙') && p.spec === `${w}*${d}`);
       if (depthPart && shelfPart) {
         entries.push({ id: entryId++, rackType:'부속품', code:depthPart.code, name:depthPart.name, spec:depthPart.spec, qty: 2 * r.tierAddQty });
@@ -2596,8 +2593,8 @@ function addMediumRack() {
   const qty      = parseInt(document.getElementById('m-qty').value);
   const errEl    = document.getElementById('errorMsg');
   const shelfKey = `${width}*${depth}`;
-  if (!MEDIUM_PARTS.기둥[height] || !MEDIUM_PARTS.전면빔[width] ||
-      !MEDIUM_PARTS.상부받침[depth] || !MEDIUM_PARTS.선반받침[depth] ||
+  if (!MEDIUM_PARTS.기둥[height] || !MEDIUM_PARTS.가로받침[width] ||
+      !MEDIUM_PARTS.공용받침[depth] ||
       !MEDIUM_PARTS.선반[shelfKey]) {
     errEl.classList.add('show'); return;
   }
@@ -2803,9 +2800,8 @@ const SINGLE_PARTS = (() => {
 
   // 중량랙
   Object.values(MEDIUM_PARTS.기둥).forEach(p => add(p.code, p.name, p.spec, ['중량랙'], '기둥'));
-  Object.values(MEDIUM_PARTS.전면빔).forEach(p => add(p.code, p.name, p.spec, ['중량랙'], '전면빔'));
-  Object.values(MEDIUM_PARTS.상부받침).forEach(p => add(p.code, p.name, p.spec, ['중량랙'], '상부받침'));
-  Object.values(MEDIUM_PARTS.선반받침).forEach(p => add(p.code, p.name, p.spec, ['중량랙'], '선반받침'));
+  Object.values(MEDIUM_PARTS.가로받침).forEach(p => add(p.code, p.name, p.spec, ['중량랙'], '가로받침'));
+  Object.values(MEDIUM_PARTS.공용받침).forEach(p => add(p.code, p.name, p.spec, ['중량랙'], '공용받침'));
   Object.values(MEDIUM_PARTS.선반).forEach(p => add(p.code, p.name, p.spec, ['중량랙'], '선반'));
   add(MEDIUM_PARTS.안전좌.code, MEDIUM_PARTS.안전좌.name, MEDIUM_PARTS.안전좌.spec, ['중량랙'], '안전좌');
 
@@ -2987,7 +2983,7 @@ function addSinglePart() {
 
 const LIGHT_ORDER=['기둥','전면빔','공용받침','안전좌','안전핀','우레탄망치','기타부속','선반'];
 const GALV_ORDER=['기둥','전면빔','공용받침','안전좌','안전핀','우레탄망치','기타부속','선반'];
-const MEDIUM_ORDER=['기둥','전면빔','상부받침','선반받침','안전좌','안전핀','우레탄망치','기타부속','선반'];
+const MEDIUM_ORDER=['기둥','가로받침','공용받침','안전좌','안전핀','우레탄망치','기타부속','선반'];
 // 순서: 기둥 → 받침류 → 안전좌 → 나머지부속(행거받침,행거봉) → 합판
 const SPEED_ORDER=['기둥','받침','연결받침','행거받침(좌)','행거받침(우)','행거받침','보강대','안전좌','우레탄망치','기타부속','기둥연결브라켓','행거봉','합판'];
 
@@ -3063,9 +3059,8 @@ function calcParts() {
       const isIndep = e.division==='독립형';
       const pile = isIndep ? 4 : 2;
       add(mB,'기둥',    MEDIUM_PARTS.기둥[e.height],                  pile*mul);
-      add(mB,'전면빔',  MEDIUM_PARTS.전면빔[e.width],                  4*mul);
-      add(mB,'상부받침',MEDIUM_PARTS.상부받침[e.depth],                2*mul);
-      add(mB,'선반받침',MEDIUM_PARTS.선반받침[e.depth],                (e.shelves-1)*2*mul);
+      add(mB,'가로받침',MEDIUM_PARTS.가로받침[e.width],                4*mul);
+      add(mB,'공용받침',MEDIUM_PARTS.공용받침[e.depth],                e.shelves*2*mul);
       add(mB,'안전좌',  MEDIUM_PARTS.안전좌,                           pile*mul);
       add(mB,'안전핀',  MEDIUM_PARTS.안전핀,                           8*mul);
       add(mB,'선반',    MEDIUM_PARTS.선반[`${e.width}*${e.depth}`],    e.shelves*mul);
@@ -3252,7 +3247,7 @@ function calcParts() {
   const UNIFIED_ORDER = ['기둥','받침','안전좌','안전핀','우레탄망치','기타부속','합판'];
   const SLOT_MAP = {
     '기둥':'기둥',
-    '전면빔':'받침','공용받침':'받침','상부받침':'받침','선반받침':'받침','받침':'받침',
+    '전면빔':'받침','가로받침':'받침','공용받침':'받침','상부받침':'받침','선반받침':'받침','받침':'받침',
     '연결받침':'받침','행거받침(좌)':'받침','행거받침(우)':'받침','행거받침':'받침','보강대':'받침',
     '안전좌':'안전좌',
     '안전핀':'안전핀',
