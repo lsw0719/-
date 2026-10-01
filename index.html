@@ -343,7 +343,7 @@
         </select>
       </div>
       <div class="field"><label>가로 / 전면빔 (mm)</label>
-        <select id="l-width"><option value="900">900</option><option value="1200" selected>1200</option><option value="1500">1500</option></select>
+        <select id="l-width"><option value="700">700</option><option value="900">900</option><option value="1200" selected>1200</option><option value="1500">1500</option></select>
       </div>
       <div class="field"><label>세로 / 공용받침 (mm)</label>
         <select id="l-depth"><option value="300">300</option><option value="450" selected>450</option><option value="600">600</option></select>
@@ -798,6 +798,7 @@ const LIGHT_PARTS = {
     2700:{code:'2D000000270',name:'경량랙/규격/기둥/W',spec:'2700'},
   },
   전면빔: {
+    700:{code:'2D11WS0070',name:'경량랙/규격/전면빔/W',spec:'700'},
     900:{code:'2D11WS0090',name:'경량랙/규격/전면빔/W',spec:'900'},
     1200:{code:'2D11WS0120',name:'경량랙/규격/전면빔/W',spec:'1200'},
     1500:{code:'2D11WS0150',name:'경량랙/규격/전면빔/W',spec:'1500'},
@@ -808,6 +809,9 @@ const LIGHT_PARTS = {
     600:{code:'2D11W0000060',name:'경량랙/규격/공용받침/W',spec:'600'},
   },
   선반: {
+    '700*300':{code:'2D9W0700300',name:'경량랙/규격/선반/W',spec:'700*300'},
+    '700*450':{code:'2D9W0700450',name:'경량랙/규격/선반/W',spec:'700*450'},
+    '700*600':{code:'2D9W0700600',name:'경량랙/규격/선반/W',spec:'700*600'},
     '900*300':{code:'2D9W1900300',name:'경량랙/규격/선반/W',spec:'900*300'},
     '900*450':{code:'2D9W1900450',name:'경량랙/규격/선반/W',spec:'900*450'},
     '900*600':{code:'2D9W0900600',name:'경량랙/규격/선반/W',spec:'900*600'},
